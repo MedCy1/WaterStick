@@ -1,0 +1,59 @@
+{
+  "version": "1.1.0",
+  "apps": [
+    {
+      "id": "smarttube",
+      "name": "SmartTube",
+      "description": "Client YouTube TV sans publicité avec SponsorBlock et lecture 4K 60fps.",
+      "category": "video",
+      "package_name": "org.smarttube.stable",
+      "download_url": "https://github.com/yuliskov/SmartTube/releases/download/latest/smarttube_stable.apk",
+      "website": "https://github.com/yuliskov/SmartTube"
+    },
+    {
+      "id": "stremio",
+      "name": "Stremio for Android TV",
+      "description": "Agrégateur moderne de streaming (films, séries, documentaires) avec extensions communautaires.",
+      "category": "video",
+      "package_name": "com.stremio.one",
+      "download_url": "https://dl.strem.io/android/v1.10.4-androidTV/com.stremio.one-1.10.4-31048580-armeabi-v7a.apk",
+      "website": "https://www.stremio.com"
+    },
+    {
+      "id": "kodi",
+      "name": "Kodi",
+      "description": "Centre multimédia open-source ultra-complet pour bibliothèques locales et distantes.",
+      "category": "media_center",
+      "package_name": "org.xbmc.kodi",
+      "download_url": "https://mirrors.kodi.tv/releases/android/arm/kodi-21.2-Omega-armeabi-v7a.apk",
+      "website": "https://kodi.tv"
+    },
+    {
+      "id": "nova",
+      "name": "Nova Video Player",
+      "description": "Lecteur vidéo Android TV open-source avec indexation automatique des métadonnées et sous-titres.",
+      "category": "video",
+      "package_name": "org.courville.nova",
+      "download_url": "https://github.com/nova-video-player/aos-AVP/releases/download/v6.6.3/org.courville.nova-2674070-6.6.3-20261101.1547-armeabi-v7a-release.apk",
+      "website": "https://github.com/nova-video-player/aos-AVP"
+    },
+    {
+      "id": "vlc",
+      "name": "VLC Media Player",
+      "description": "Lecteur universel tout-terrain compatible avec tous les codecs audio/vidéo et flux réseau.",
+      "category": "video",
+      "package_name": "org.videolan.vlc",
+      "download_url": "https://get.videolan.org/vlc-android/3.5.4/VLC-Android-3.5.4-armeabi-v7a.apk",
+      "website": "https://www.videolan.org/vlc/download-android.html"
+    },
+    {
+      "id": "jellyfin",
+      "name": "Jellyfin Android TV",
+      "description": "Client officiel 100% libre et gratuit pour streamer votre serveur Jellyfin personnel.",
+      "category": "media_center",
+      "package_name": "org.jellyfin.androidtv",
+      "download_url": "https://github.com/jellyfin/jellyfin-androidtv/releases/download/v0.19.10/jellyfin-androidtv-v0.19.10-release.apk",
+      "website": "https://jellyfin.org"
+    }
+  ]
+}
