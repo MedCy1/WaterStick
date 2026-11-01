@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/MedCy1/WaterStick/pkg/waterstick"
@@ -878,7 +880,61 @@ the Alexa voice remote control.`,
 	}
 	updateCmd.Flags().BoolVar(&checkOnlyFlag, "check", false, "Only check if an update is available without installing")
 
-	rootCmd.AddCommand(connectCmd, disconnectCmd, devicesCmd, healthCmd, packagesCmd, freezeCmd, unfreezeCmd, debloatCmd, rollbackCmd, sideloadCmd, listAppsCmd, otaCmd, purgeCmd, tweakCmd, tuiCmd, guiCmd, aboutCmd, updateCmd)
+	// 16. completion
+	completionCmd := &cobra.Command{
+		Use:   "completion [bash|zsh|fish|powershell|install]",
+		Short: "Generate shell completion scripts or install them automatically",
+		Long: `Generate shell autocompletion scripts for WaterStick or install them automatically.
+
+To automatically configure completion for your current shell:
+  waterstick completion install
+
+Manual configuration:
+  Bash:
+    $ source <(waterstick completion bash)
+  Zsh:
+    $ source <(waterstick completion zsh)
+  Fish:
+    $ waterstick completion fish | source
+  PowerShell:
+    PS> waterstick completion powershell | Out-String | Invoke-Expression`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return cmd.Help()
+			}
+			switch args[0] {
+			case "install":
+				return installCompletion(rootCmd, "")
+			case "bash":
+				return rootCmd.GenBashCompletion(os.Stdout)
+			case "zsh":
+				return rootCmd.GenZshCompletion(os.Stdout)
+			case "fish":
+				return rootCmd.GenFishCompletion(os.Stdout, true)
+			case "powershell":
+				return rootCmd.GenPowerShellCompletionWithDesc(os.Stdout)
+			default:
+				return fmt.Errorf("unknown shell %q. Supported shells: install, bash, zsh, fish, powershell", args[0])
+			}
+		},
+	}
+
+	installCmd := &cobra.Command{
+		Use:   "install [bash|zsh|fish|powershell]",
+		Short: "Automatically install shell autocompletion for your shell",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			targetShell := ""
+			if len(args) > 0 {
+				targetShell = args[0]
+			}
+			return installCompletion(rootCmd, targetShell)
+		},
+	}
+	completionCmd.AddCommand(installCmd)
+
+	rootCmd.AddCommand(connectCmd, disconnectCmd, devicesCmd, healthCmd, packagesCmd, freezeCmd, unfreezeCmd, debloatCmd, rollbackCmd, sideloadCmd, listAppsCmd, otaCmd, purgeCmd, tweakCmd, tuiCmd, guiCmd, aboutCmd, updateCmd, completionCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -894,4 +950,117 @@ func resolveDevice(engine *waterstick.Engine, explicitDevice string) string {
 		return devices[0]
 	}
 	return ""
+}
+
+func installCompletion(rootCmd *cobra.Command, requestedShell string) error {
+	shellName := strings.ToLower(requestedShell)
+	if shellName == "" {
+		userShell := os.Getenv("SHELL")
+		if userShell != "" {
+			shellName = strings.ToLower(filepath.Base(userShell))
+		} else if runtime.GOOS == "windows" {
+			shellName = "powershell"
+		}
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("unable to determine user home directory: %w", err)
+	}
+
+	switch {
+	case strings.Contains(shellName, "zsh"):
+		zshrc := filepath.Join(homeDir, ".zshrc")
+		content, _ := os.ReadFile(zshrc)
+		if strings.Contains(string(content), "waterstick completion zsh") {
+			fmt.Printf("Shell autocompletion for zsh is already configured in %s.\n", zshrc)
+			return nil
+		}
+		snippet := "\n# WaterStick shell completion\nif command -v waterstick >/dev/null 2>&1; then\n  eval \"$(waterstick completion zsh)\"\nfi\n"
+		f, err := os.OpenFile(zshrc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to open %s: %w", zshrc, err)
+		}
+		defer f.Close()
+		if _, err := f.WriteString(snippet); err != nil {
+			return fmt.Errorf("failed to append completion snippet: %w", err)
+		}
+		fmt.Printf("Shell autocompletion for zsh successfully installed in %s!\n", zshrc)
+		fmt.Println("Run 'source ~/.zshrc' or open a new terminal tab to activate it.")
+		return nil
+
+	case strings.Contains(shellName, "bash"):
+		xdgDir := filepath.Join(homeDir, ".local", "share", "bash-completion", "completions")
+		if err := os.MkdirAll(xdgDir, 0755); err == nil {
+			compFile := filepath.Join(xdgDir, "waterstick")
+			f, err := os.Create(compFile)
+			if err == nil {
+				defer f.Close()
+				if err := rootCmd.GenBashCompletion(f); err == nil {
+					fmt.Printf("Shell autocompletion for bash successfully installed in %s!\n", compFile)
+					fmt.Println("Autocompletion will be available in your next bash session.")
+					return nil
+				}
+			}
+		}
+		bashrc := filepath.Join(homeDir, ".bashrc")
+		content, _ := os.ReadFile(bashrc)
+		if strings.Contains(string(content), "waterstick completion bash") {
+			fmt.Printf("Shell autocompletion for bash is already configured in %s.\n", bashrc)
+			return nil
+		}
+		snippet := "\n# WaterStick shell completion\nif command -v waterstick >/dev/null 2>&1; then\n  eval \"$(waterstick completion bash)\"\nfi\n"
+		f, err := os.OpenFile(bashrc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to open %s: %w", bashrc, err)
+		}
+		defer f.Close()
+		if _, err := f.WriteString(snippet); err != nil {
+			return fmt.Errorf("failed to append completion snippet: %w", err)
+		}
+		fmt.Printf("Shell autocompletion for bash successfully installed in %s!\n", bashrc)
+		fmt.Println("Run 'source ~/.bashrc' or open a new terminal tab to activate it.")
+		return nil
+
+	case strings.Contains(shellName, "fish"):
+		fishDir := filepath.Join(homeDir, ".config", "fish", "completions")
+		if err := os.MkdirAll(fishDir, 0755); err != nil {
+			return fmt.Errorf("failed to create fish directory: %w", err)
+		}
+		fishFile := filepath.Join(fishDir, "waterstick.fish")
+		f, err := os.Create(fishFile)
+		if err != nil {
+			return fmt.Errorf("failed to create %s: %w", fishFile, err)
+		}
+		defer f.Close()
+		if err := rootCmd.GenFishCompletion(f, true); err != nil {
+			return fmt.Errorf("failed to generate fish completion: %w", err)
+		}
+		fmt.Printf("Shell autocompletion for fish successfully installed in %s!\n", fishFile)
+		return nil
+
+	case strings.Contains(shellName, "powershell") || runtime.GOOS == "windows":
+		psDir := filepath.Join(homeDir, "Documents", "PowerShell")
+		os.MkdirAll(psDir, 0755)
+		profile := filepath.Join(psDir, "Microsoft.PowerShell_profile.ps1")
+		content, _ := os.ReadFile(profile)
+		if strings.Contains(string(content), "waterstick completion powershell") {
+			fmt.Printf("Shell autocompletion for PowerShell is already configured in %s.\n", profile)
+			return nil
+		}
+		snippet := "\n# WaterStick shell completion\nInvoke-Expression (&waterstick completion powershell | Out-String)\n"
+		f, err := os.OpenFile(profile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to write to %s: %w", profile, err)
+		}
+		defer f.Close()
+		if _, err := f.WriteString(snippet); err != nil {
+			return fmt.Errorf("failed to append completion snippet: %w", err)
+		}
+		fmt.Printf("Shell autocompletion for PowerShell successfully installed in %s!\n", profile)
+		return nil
+
+	default:
+		return fmt.Errorf("unsupported or undetected shell '%s'. Supported shells: zsh, bash, fish, powershell", shellName)
+	}
 }

@@ -130,6 +130,9 @@ waterstick tweak audio --optical-51
 waterstick tweak display --match-framerate on
 waterstick tweak power --ambient off
 waterstick tweak dns adguard
+
+# Shell autocompletion (auto-detects Zsh, Bash, Fish, PowerShell)
+waterstick completion install
 ```
 
 ## Testing

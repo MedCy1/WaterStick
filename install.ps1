@@ -54,3 +54,10 @@ Write-Host "WaterStick $Tag installed successfully!"
 Write-Host "  - Executable: $InstallDir\waterstick.exe"
 Write-Host "  - Dashboard:  $InstallDir\waterstick-tui.exe"
 Write-Host "  - Desktop shortcut created: $DesktopPath\WaterStick.lnk"
+
+# Configure shell autocompletion
+try {
+    & "$InstallDir\waterstick.exe" completion install
+} catch {
+    # Non-fatal if PowerShell profile cannot be written
+}
