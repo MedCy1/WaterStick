@@ -2,6 +2,9 @@
 /bin/
 /dist/
 /build/
+/waterstick
+/waterstick-tui
+/waterstick-gui
 *.exe
 *.exe~
 *.dll

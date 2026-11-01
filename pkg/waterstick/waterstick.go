@@ -7,6 +7,7 @@ import (
 	"github.com/MedCy1/WaterStick/pkg/waterstick/adb"
 	"github.com/MedCy1/WaterStick/pkg/waterstick/backup"
 	"github.com/MedCy1/WaterStick/pkg/waterstick/diagnostics"
+	"github.com/MedCy1/WaterStick/pkg/waterstick/launcher"
 	"github.com/MedCy1/WaterStick/pkg/waterstick/models"
 	"github.com/MedCy1/WaterStick/pkg/waterstick/packages"
 	"github.com/MedCy1/WaterStick/pkg/waterstick/sideload"
@@ -22,6 +23,7 @@ type Engine struct {
 	OTA       *tuning.OTAManager
 	Backup    *backup.Manager
 	Sideload  *sideload.Catalog
+	Launcher  *launcher.Cleaner
 	Profiles  map[string]models.Profile
 }
 
@@ -47,6 +49,7 @@ func NewEngine(customAdbPath string) (*Engine, error) {
 		OTA:       tuning.NewOTAManager(adbClient),
 		Backup:    backup.NewManager(adbClient),
 		Sideload:  sideMgr,
+		Launcher:  launcher.NewCleaner(adbClient, pkgMgr),
 		Profiles:  make(map[string]models.Profile),
 	}
 
@@ -282,5 +285,26 @@ func (e *Engine) GetDNSTweakConfig(ctx context.Context, deviceSerial string) (tu
 func (e *Engine) SetDNSProvider(ctx context.Context, deviceSerial string, providerKey string) error {
 	return e.Tuner.SetDNSProvider(ctx, deviceSerial, providerKey)
 }
+
+// CleanStockLauncher cleans, accelerates and sterilizes the stock Amazon launcher.
+func (e *Engine) CleanStockLauncher(ctx context.Context, deviceSerial string, opts launcher.CleanOptions) (*launcher.CleanResult, error) {
+	return e.Launcher.Clean(ctx, deviceSerial, opts)
+}
+
+// RestoreStockLauncher reverts all launcher settings to Amazon factory defaults.
+func (e *Engine) RestoreStockLauncher(ctx context.Context, deviceSerial string) (*launcher.RestoreResult, error) {
+	return e.Launcher.Restore(ctx, deviceSerial)
+}
+
+// GetLauncherStatus inspects the active launcher settings and ad rows status.
+func (e *Engine) GetLauncherStatus(ctx context.Context, deviceSerial string) (*launcher.Status, error) {
+	return e.Launcher.GetStatus(ctx, deviceSerial)
+}
+
+// RestartLauncher restarts com.amazon.tv.launcher to flush memory and reset UI state.
+func (e *Engine) RestartLauncher(ctx context.Context, deviceSerial string) error {
+	return e.Launcher.Restart(ctx, deviceSerial)
+}
+
 
 

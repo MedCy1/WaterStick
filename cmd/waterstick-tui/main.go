@@ -11,6 +11,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/MedCy1/WaterStick/pkg/waterstick"
+	"github.com/MedCy1/WaterStick/pkg/waterstick/launcher"
 	"github.com/MedCy1/WaterStick/pkg/waterstick/models"
 	"github.com/MedCy1/WaterStick/pkg/waterstick/tuning"
 	"github.com/MedCy1/WaterStick/pkg/waterstick/updater"
@@ -49,11 +50,12 @@ type model struct {
 	height       int
 
 	// Advanced Hardware & System Tweaks
-	tweakAudio    tuning.AudioTweakConfig
-	tweakDisplay  tuning.DisplayTweakConfig
-	tweakPower    tuning.PowerTweakConfig
-	tweakDNS      tuning.DNSTweakConfig
-	debloatCursor int // 0: Profil Équilibré, 1: Profil Streamer, 2: Ampli Optique, 3: Nav sounds, 4: Match 24p, 5: Ambient, 6: DNS DoT
+	tweakAudio     tuning.AudioTweakConfig
+	tweakDisplay   tuning.DisplayTweakConfig
+	tweakPower     tuning.PowerTweakConfig
+	tweakDNS       tuning.DNSTweakConfig
+	launcherStatus *launcher.Status
+	debloatCursor  int // 0: Profil Équilibré, 1: Profil Streamer, 2: Ampli Optique, 3: Nav sounds, 4: Match 24p, 5: Ambient, 6: DNS DoT, 7: Stock Clean WaterOS
 
 	// Diagnostics Focus & Navigation
 	healthFocusZone int // 0: Top Toolbar, 1: Package Explorer
@@ -149,14 +151,15 @@ func checkUpdateCmd() tea.Msg {
 }
 
 type diagMsg struct {
-	dev   *models.Device
-	pkgs  []models.Package
-	apps  []models.SideloadApp
-	audio tuning.AudioTweakConfig
-	disp  tuning.DisplayTweakConfig
-	pwr   tuning.PowerTweakConfig
-	dns   tuning.DNSTweakConfig
-	err   error
+	dev      *models.Device
+	pkgs     []models.Package
+	apps     []models.SideloadApp
+	audio    tuning.AudioTweakConfig
+	disp     tuning.DisplayTweakConfig
+	pwr      tuning.PowerTweakConfig
+	dns      tuning.DNSTweakConfig
+	launcher *launcher.Status
+	err      error
 }
 
 func (m model) fetchDiagnosticsCmd() tea.Cmd {
@@ -173,7 +176,8 @@ func (m model) fetchDiagnosticsCmd() tea.Cmd {
 		disp, _ := m.engine.GetDisplayTweakConfig(ctx, m.targetDevice)
 		pwr, _ := m.engine.GetPowerTweakConfig(ctx, m.targetDevice)
 		dns, _ := m.engine.GetDNSTweakConfig(ctx, m.targetDevice)
-		return diagMsg{dev: info, pkgs: pkgs, apps: apps, audio: audio, disp: disp, pwr: pwr, dns: dns}
+		lnc, _ := m.engine.GetLauncherStatus(ctx, m.targetDevice)
+		return diagMsg{dev: info, pkgs: pkgs, apps: apps, audio: audio, disp: disp, pwr: pwr, dns: dns, launcher: lnc}
 	}
 }
 
@@ -309,6 +313,26 @@ func (m model) cycleDNSCmd() tea.Cmd {
 		}
 		cfg, _ := m.engine.GetDNSTweakConfig(ctx, m.targetDevice)
 		return actionDoneMsg{msg: fmt.Sprintf("DoT DNS : %s", cfg.ProviderName), toastType: "success"}
+	}
+}
+
+func (m model) toggleLauncherCleanCmd() tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		if m.launcherStatus != nil && m.launcherStatus.IsClean {
+			_, err := m.engine.RestoreStockLauncher(ctx, m.targetDevice)
+			if err != nil {
+				return actionDoneMsg{err: err, toastType: "error"}
+			}
+			return actionDoneMsg{msg: "Launcher Amazon restauré aux paramètres d'usine", toastType: "info"}
+		}
+		opts := launcher.DefaultCleanOptions()
+		_, err := m.engine.CleanStockLauncher(ctx, m.targetDevice, opts)
+		if err != nil {
+			return actionDoneMsg{err: err, toastType: "error"}
+		}
+		return actionDoneMsg{msg: "Stock Clean WaterOS activé : pubs coupées & UI boostée", toastType: "success"}
 	}
 }
 
@@ -686,7 +710,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "down", "j":
 				if m.debloatCursor == 0 || m.debloatCursor == 1 {
 					m.debloatCursor = 2
-				} else if m.debloatCursor < 6 {
+				} else if m.debloatCursor < 7 {
 					m.debloatCursor++
 				}
 			case "left", "h":
@@ -744,6 +768,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.isBusy = true
 					m.statusMsg = "Changement du résolveur DNS DoT..."
 					return m, m.cycleDNSCmd()
+				} else if m.debloatCursor == 7 {
+					m.isBusy = true
+					m.statusMsg = "Bascule Stock Clean WaterOS (Launcher)..."
+					return m, m.toggleLauncherCleanCmd()
 				}
 			}
 
@@ -953,6 +981,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.tweakDisplay = msg.disp
 			m.tweakPower = msg.pwr
 			m.tweakDNS = msg.dns
+			m.launcherStatus = msg.launcher
 			if len(msg.apps) > 0 {
 				m.apps = msg.apps
 			}
@@ -1536,6 +1565,19 @@ func (m model) renderDebloat(w int) string {
 		dnsStyle = lipgloss.NewStyle().Bold(true).Foreground(cAccentCyan)
 	}
 	tweakLines = append(tweakLines, fmt.Sprintf("%s%s %s", dnsCursor, dnsStyle.Render("Résolveur DNS Sécurisé DoT    :"), dnsStatus))
+
+	// 7. Stock Clean WaterOS (Launcher Ads & Speedup)
+	lncCursor := "  "
+	lncStyle := lipgloss.NewStyle().Foreground(cTextSub)
+	lncStatus := lipgloss.NewStyle().Foreground(cTextMuted).Render("[ Standard Amazon (Pubs actives) ]")
+	if m.launcherStatus != nil && m.launcherStatus.IsClean {
+		lncStatus = lipgloss.NewStyle().Foreground(cGreen).Render("[ ACTIVÉ (Trailers muets, pubs gelées, UI 0.5x) ]")
+	}
+	if m.debloatCursor == 7 {
+		lncCursor = "▶ "
+		lncStyle = lipgloss.NewStyle().Bold(true).Foreground(cAccentCyan)
+	}
+	tweakLines = append(tweakLines, fmt.Sprintf("%s%s %s", lncCursor, lncStyle.Render("Stock Clean WaterOS (Launcher) :"), lncStatus))
 
 	tweaksBoxStyle := cardStyle
 	if m.debloatCursor >= 2 {

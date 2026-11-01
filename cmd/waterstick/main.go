@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/MedCy1/WaterStick/pkg/waterstick"
+	"github.com/MedCy1/WaterStick/pkg/waterstick/launcher"
 	"github.com/MedCy1/WaterStick/pkg/waterstick/models"
 	"github.com/MedCy1/WaterStick/pkg/waterstick/updater"
 	"github.com/spf13/cobra"
@@ -791,6 +792,218 @@ the Alexa voice remote control.`,
 
 	tweakCmd.AddCommand(tweakStatusCmd, tweakAudioCmd, tweakDisplayCmd, tweakPowerCmd, tweakDNSCmd)
 
+	// Launcher - Stock Clean WaterOS optimizations
+	launcherCmd := &cobra.Command{
+		Use:     "launcher",
+		Aliases: []string{"home", "clean-launcher"},
+		Short:   "Clean, optimize, and sterilize the stock Amazon launcher (Stock Clean WaterOS)",
+		Long: `Transform the stock Amazon launcher into a blazing-fast, ad-free experience.
+Silences trailer video autoplay and audio, accelerates or zeroes UI animations,
+freezes commercial recommendation rows, and flushes launcher cache.`,
+	}
+
+	var instantAnimFlag bool
+	var customScaleFlag float64
+	var noFreezeAdsFlag bool
+	var silenceNavFlag bool
+	var keepCacheFlag bool
+
+	launcherCleanCmd := &cobra.Command{
+		Use:   "clean",
+		Short: "Apply Stock Clean WaterOS optimizations to the Amazon launcher",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+
+			opts := launcher.DefaultCleanOptions()
+			if instantAnimFlag {
+				opts.AnimationScale = 0.0
+			} else if customScaleFlag >= 0.0 {
+				opts.AnimationScale = customScaleFlag
+			}
+			if noFreezeAdsFlag {
+				opts.FreezeAdRows = false
+			}
+			if silenceNavFlag {
+				opts.SilenceNavSounds = true
+			}
+			if keepCacheFlag {
+				opts.ClearCache = false
+			}
+
+			fmt.Println("Applying Stock Clean WaterOS optimizations...")
+			res, err := engine.CleanStockLauncher(ctx, devSerial, opts)
+			if err != nil {
+				return fmt.Errorf("failed to clean launcher: %w", err)
+			}
+
+			fmt.Println("\n[OK] Launcher optimization complete:")
+			if res.AutoplayDisabled {
+				fmt.Println(" • Video autoplay banner disabled (featured trailer playback blocked)")
+			}
+			if res.BannerMuted {
+				fmt.Println(" • Banner video volume muted (0.0)")
+			}
+			if res.AnimationSpeedup {
+				fmt.Printf(" • UI animations accelerated (scale: %.1fx)\n", opts.AnimationScale)
+			}
+			if len(res.FrozenAdPackages) > 0 {
+				fmt.Printf(" • Frozen commercial ad & recommendation row packages (%d):\n", len(res.FrozenAdPackages))
+				for _, pkg := range res.FrozenAdPackages {
+					fmt.Printf("   - %s\n", pkg)
+				}
+			}
+			if res.CacheCleared {
+				fmt.Println(" • System & launcher caches purged")
+			}
+			if res.LauncherRestarted {
+				fmt.Println(" • Amazon Launcher restarted (flushed memory and applied clean UI)")
+			}
+			return nil
+		},
+	}
+	launcherCleanCmd.Flags().BoolVar(&instantAnimFlag, "instant", false, "Set UI animation scale to 0.0 for 0ms instantaneous navigation")
+	launcherCleanCmd.Flags().Float64Var(&customScaleFlag, "scale", -1.0, "Custom animation scale (e.g. 0.0, 0.25, 0.5)")
+	launcherCleanCmd.Flags().BoolVar(&noFreezeAdsFlag, "no-freeze", false, "Do not freeze commercial ad and recommendation row packages")
+	launcherCleanCmd.Flags().BoolVar(&silenceNavFlag, "silence-nav", false, "Silence remote navigation click sounds")
+	launcherCleanCmd.Flags().BoolVar(&keepCacheFlag, "keep-cache", false, "Skip clearing launcher and disk caches")
+
+	launcherStatusCmd := &cobra.Command{
+		Use:   "status",
+		Short: "Display current launcher optimization and sterilization status",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+
+			st, err := engine.GetLauncherStatus(ctx, devSerial)
+			if err != nil {
+				return fmt.Errorf("failed to get launcher status: %w", err)
+			}
+
+			stateLabel := "[STOCK CLEAN WATEROS]"
+			if !st.IsClean {
+				stateLabel = "[STOCK AMAZON (ADS ACTIVE)]"
+			}
+			fmt.Printf("Launcher Status on %s: %s\n\n", devSerial, stateLabel)
+
+			autoStatus := "ENABLED (Standard Amazon)"
+			if st.AutoplayDisabled {
+				autoStatus = "DISABLED (Blocked)"
+			}
+			fmt.Printf(" • Featured Video Autoplay: %s\n", autoStatus)
+
+			audioStatus := "UNMUTED"
+			if st.BannerMuted {
+				audioStatus = "MUTED (0.0)"
+			}
+			fmt.Printf(" • Banner Audio Volume:     %s\n", audioStatus)
+
+			pvdeStatus := "ENABLED"
+			if st.PvdeDisabled {
+				pvdeStatus = "DISABLED (Blocked direct Prime stream)"
+			}
+			fmt.Printf(" • PVDE Direct Playback:    %s\n", pvdeStatus)
+
+			fmt.Printf(" • Animation Scales:        Window=%s, Transition=%s, Animator=%s\n",
+				st.WindowAnimScale, st.TransitionAnimScale, st.AnimatorScale)
+
+			fmt.Printf(" • Commercial Ad Packages:  %d frozen / %d total\n",
+				len(st.FrozenAdPackages), len(st.FrozenAdPackages)+len(st.ActiveAdPackages))
+			if len(st.FrozenAdPackages) > 0 {
+				fmt.Println("   Frozen packages:")
+				for _, p := range st.FrozenAdPackages {
+					fmt.Printf("     - %s\n", p)
+				}
+			}
+			if len(st.ActiveAdPackages) > 0 {
+				fmt.Println("   Active commercial packages:")
+				for _, p := range st.ActiveAdPackages {
+					fmt.Printf("     - %s\n", p)
+				}
+			}
+
+			return nil
+		},
+	}
+
+	launcherRestoreCmd := &cobra.Command{
+		Use:   "restore",
+		Short: "Restore Amazon launcher settings and commercial packages to factory defaults",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+
+			fmt.Println("Reverting launcher to Amazon factory defaults...")
+			res, err := engine.RestoreStockLauncher(ctx, devSerial)
+			if err != nil {
+				return fmt.Errorf("failed to restore launcher: %w", err)
+			}
+
+			fmt.Println("\n[OK] Launcher restored to factory state:")
+			if res.AutoplayRestored {
+				fmt.Println(" • Featured video autoplay & banner audio re-enabled")
+			}
+			if res.AnimationRestored {
+				fmt.Println(" • Standard animation scales restored (1.0x)")
+			}
+			if len(res.UnfrozenAdPackages) > 0 {
+				fmt.Printf(" • Unfrozen commercial packages (%d):\n", len(res.UnfrozenAdPackages))
+				for _, pkg := range res.UnfrozenAdPackages {
+					fmt.Printf("   - %s\n", pkg)
+				}
+			}
+			if res.LauncherRestarted {
+				fmt.Println(" • Launcher restarted to apply stock settings")
+			}
+			return nil
+		},
+	}
+
+	launcherRestartCmd := &cobra.Command{
+		Use:   "restart",
+		Short: "Restart com.amazon.tv.launcher to flush RAM and UI state",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+
+			if err := engine.RestartLauncher(ctx, devSerial); err != nil {
+				return fmt.Errorf("failed to restart launcher: %w", err)
+			}
+			fmt.Printf("[OK] Launcher restarted on %s\n", devSerial)
+			return nil
+		},
+	}
+
+	launcherCmd.AddCommand(launcherCleanCmd, launcherStatusCmd, launcherRestoreCmd, launcherRestartCmd)
+
 	// 10. tui
 	tuiCmd := &cobra.Command{
 		Use:   "tui",
@@ -935,7 +1148,7 @@ Manual configuration:
 	}
 	completionCmd.AddCommand(installCmd)
 
-	rootCmd.AddCommand(connectCmd, disconnectCmd, devicesCmd, healthCmd, packagesCmd, freezeCmd, unfreezeCmd, debloatCmd, rollbackCmd, sideloadCmd, listAppsCmd, otaCmd, purgeCmd, tweakCmd, tuiCmd, guiCmd, aboutCmd, updateCmd, completionCmd)
+	rootCmd.AddCommand(connectCmd, disconnectCmd, devicesCmd, healthCmd, packagesCmd, freezeCmd, unfreezeCmd, debloatCmd, rollbackCmd, sideloadCmd, listAppsCmd, otaCmd, purgeCmd, tweakCmd, launcherCmd, tuiCmd, guiCmd, aboutCmd, updateCmd, completionCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

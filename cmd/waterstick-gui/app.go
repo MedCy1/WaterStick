@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/MedCy1/WaterStick/pkg/waterstick"
+	"github.com/MedCy1/WaterStick/pkg/waterstick/launcher"
 	"github.com/MedCy1/WaterStick/pkg/waterstick/models"
 	"github.com/MedCy1/WaterStick/pkg/waterstick/updater"
 )
@@ -355,5 +356,49 @@ func (a *App) ApplyUpdate() (string, error) {
 	}
 	return "Mise à jour installée avec succès. Veuillez relancer l'application.", nil
 }
+
+// CleanStockLauncher applies Stock Clean WaterOS optimizations to the stock Amazon launcher.
+func (a *App) CleanStockLauncher(instant bool) (*launcher.CleanResult, error) {
+	target := a.GetConnectedDevice()
+	if target == "" {
+		return nil, fmt.Errorf("aucun périphérique connecté")
+	}
+	opts := launcher.DefaultCleanOptions()
+	if instant {
+		opts.AnimationScale = 0.0
+	}
+	return a.engine.CleanStockLauncher(a.ctx, target, opts)
+}
+
+// RestoreStockLauncher restores the stock Amazon launcher to factory defaults.
+func (a *App) RestoreStockLauncher() (*launcher.RestoreResult, error) {
+	target := a.GetConnectedDevice()
+	if target == "" {
+		return nil, fmt.Errorf("aucun périphérique connecté")
+	}
+	return a.engine.RestoreStockLauncher(a.ctx, target)
+}
+
+// GetLauncherStatus queries current stock launcher sterilisation status.
+func (a *App) GetLauncherStatus() (*launcher.Status, error) {
+	target := a.GetConnectedDevice()
+	if target == "" {
+		return nil, fmt.Errorf("aucun périphérique connecté")
+	}
+	return a.engine.GetLauncherStatus(a.ctx, target)
+}
+
+// RestartLauncher force-stops com.amazon.tv.launcher to flush RAM and UI state.
+func (a *App) RestartLauncher() (string, error) {
+	target := a.GetConnectedDevice()
+	if target == "" {
+		return "", fmt.Errorf("aucun périphérique connecté")
+	}
+	if err := a.engine.RestartLauncher(a.ctx, target); err != nil {
+		return "", err
+	}
+	return "Launcher redémarré avec succès", nil
+}
+
 
 

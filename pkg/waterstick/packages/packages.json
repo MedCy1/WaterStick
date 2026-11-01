@@ -356,6 +356,24 @@
       "category": "voice",
       "risk": "medium",
       "recommendation": "keep_for_voice"
+    },
+    {
+      "id": "com.amazon.media.recommendations",
+      "name": "Amazon Media Recommendations",
+      "description": "Injects sponsored and promotional movie/show recommendation rows into the home screen launcher.",
+      "tier": "tier_safe",
+      "category": "bloat",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.firehomestarter",
+      "name": "Fire Home Starter Watchdog",
+      "description": "Amazon watchdog process that monitors and forces the default stock launcher to re-enable itself.",
+      "tier": "tier_safe",
+      "category": "bloat",
+      "risk": "none",
+      "recommendation": "disable"
     }
   ]
 }
