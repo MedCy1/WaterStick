@@ -61,16 +61,33 @@ echo "  - $INSTALL_DIR/waterstick-tui (Dashboard)"
 if [ "$GOOS" = "linux" ]; then
   DESKTOP_DIR="$HOME/.local/share/applications"
   if mkdir -p "$DESKTOP_DIR" 2>/dev/null; then
+    # Detect preferred modern terminal emulator to prevent ugly legacy xterm fallback
+    TERM_EXEC=""
+    TERM_FLAG="true"
+    for term in kitty ghostty foot alacritty wezterm xfce4-terminal gnome-terminal; do
+      if command -v "$term" >/dev/null 2>&1; then
+        TERM_EXEC="$term --title \"WaterStick\" -e $INSTALL_DIR/waterstick-tui"
+        TERM_FLAG="false"
+        break
+      fi
+    done
+
+    if [ -z "$TERM_EXEC" ]; then
+      TERM_EXEC="$INSTALL_DIR/waterstick-tui"
+    fi
+
     cat <<EOF > "$DESKTOP_DIR/waterstick.desktop"
 [Desktop Entry]
 Name=WaterStick
+GenericName=Fire TV Debloat & Optimization Suite
 Comment=Fire TV Stick 4K Max Debloat & Optimization Suite
-Exec=$INSTALL_DIR/waterstick-tui
-Terminal=true
+Exec=$TERM_EXEC
+Terminal=$TERM_FLAG
 Type=Application
 Icon=utilities-terminal
-Categories=Utility;System;
-Keywords=firetv;adb;debloat;optimization;
+Categories=System;Utility;
+Keywords=firetv;adb;debloat;optimization;waterstick;
+StartupWMClass=waterstick-tui
 EOF
     chmod 644 "$DESKTOP_DIR/waterstick.desktop" 2>/dev/null || true
     if command -v update-desktop-database >/dev/null 2>&1; then
