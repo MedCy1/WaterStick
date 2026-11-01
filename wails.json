@@ -1,0 +1,17 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "WaterStick",
+  "outputfilename": "waterstick-gui",
+  "frontend:dir": "cmd/waterstick-gui/frontend",
+  "author": {
+    "name": "MedCy1",
+    "email": ""
+  },
+  "info": {
+    "companyName": "WaterStick",
+    "productName": "WaterStick",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright 2026",
+    "comments": "Open-Source Fire TV Stick 4K Max 2nd Gen Debloat & Optimization Suite"
+  }
+}

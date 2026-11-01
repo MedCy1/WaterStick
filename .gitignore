@@ -1,0 +1,32 @@
+# Binaries
+bin/
+dist/
+build/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test & coverage
+*.test
+*.out
+coverage.html
+
+# Local caches
+.cache/
+tmp/
+.serena/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Research & decompiled dumps
+research/apks/
+research/decompiled/
+
+# Wails frontend node_modules
+cmd/waterstick-gui/frontend/node_modules/
