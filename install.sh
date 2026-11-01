@@ -55,7 +55,7 @@ echo "  - $INSTALL_DIR/waterstick (CLI)"
 echo "  - $INSTALL_DIR/waterstick-tui (Dashboard)"
 
 # Automatically install shell autocompletion
-"$INSTALL_DIR/waterstick" completion install 2>/dev/null || true
+"$INSTALL_DIR/waterstick" completion install >/dev/null 2>&1 || true
 
 case ":$PATH:" in
   *":$INSTALL_DIR:"*) ;;
