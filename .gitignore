@@ -1,7 +1,7 @@
 # Binaries
-bin/
-dist/
-build/
+/bin/
+/dist/
+/build/
 *.exe
 *.exe~
 *.dll

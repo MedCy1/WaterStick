@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WaterStick</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">
+                    <svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                </div>
+                <div class="brand-text">
+                    <h2>WaterStick</h2>
+                    <span>Fire OS 8.1</span>
+                </div>
+            </div>
+
+            <nav class="nav-links">
+                <button class="nav-btn active" data-tab="tab-health">
+                    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    Diagnostics
+                </button>
+                <button class="nav-btn" data-tab="tab-debloat">
+                    <svg viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                    Optimisation
+                </button>
+                <button class="nav-btn" data-tab="tab-rollback">
+                    <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    Restauration
+                </button>
+                <button class="nav-btn" data-tab="tab-sideload">
+                    <svg viewBox="0 0 24 24"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    Applications
+                </button>
+                <button class="nav-btn" data-tab="tab-connect">
+                    <svg viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                    Connexion Wi-Fi
+                </button>
+            </nav>
+
+            <div class="device-indicator">
+                <span class="status-dot online" id="status-dot"></span>
+                <span class="device-address" id="device-label">192.168.1.50:5555</span>
+            </div>
+
+            <div class="sidebar-credits" style="padding: 12px 16px; margin-top: auto; font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <span>WaterStick v1.0.0</span>
+                <a href="https://github.com/MedCy1" target="_blank" style="color: var(--text-muted); text-decoration: none;" onmouseover="this.style.color='var(--accent-cyan)'" onmouseout="this.style.color='var(--text-muted)'">github.com/MedCy1</a>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="content">
+            <header class="topbar">
+                <h1 id="page-title">Diagnostics Matériels & OS</h1>
+                <div class="protection-badge">
+                    <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>Alexa & Télécommande protégées</span>
+                </div>
+            </header>
+
+            <!-- TAB 1: DIAGNOSTICS (DEFAULT) -->
+            <section id="tab-health" class="tab-panel active">
+                <div class="toolbar">
+                    <div class="toolbar-actions">
+                        <button id="btn-purge-ram" class="btn btn-secondary">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="12" x2="16" y2="14"/></svg>
+                            Purger la mémoire cache
+                        </button>
+                        <button id="btn-toggle-ota" class="btn btn-secondary">
+                            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            <span id="label-ota-toggle">Bouclier OTA : Gelé</span>
+                        </button>
+                    </div>
+                    <span id="quick-action-status" class="toolbar-feedback"></span>
+                </div>
+
+                <!-- Metrics Grid -->
+                <div class="metrics-grid">
+                    <div class="metric-item">
+                        <span class="metric-label">Modèle Matériel</span>
+                        <div class="metric-value" id="stat-model">Fire TV Stick 4K Max (2nd Gen)</div>
+                        <div class="metric-sub" id="stat-model-sub">AFTKRT • Karat</div>
+                    </div>
+
+                    <div class="metric-item">
+                        <span class="metric-label">Système d'exploitation</span>
+                        <div class="metric-value" id="stat-os">Fire OS 8.1.8.5</div>
+                        <div class="metric-sub" id="stat-android">Android 11 Base (API 30)</div>
+                    </div>
+
+                    <div class="metric-item">
+                        <span class="metric-label">Stockage Utilisateur</span>
+                        <div class="metric-value" id="stat-storage">6.3 Go libres / 12 Go</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" id="storage-fill" style="width: 47%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-item">
+                        <span class="metric-label">Mémoire Vive (RAM)</span>
+                        <div class="metric-value" id="stat-ram">711 Mo libres / 1669 Mo</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" id="ram-fill" style="width: 57%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-item">
+                        <span class="metric-label">Capteurs Thermiques SoC</span>
+                        <div class="metric-value" id="stat-temp">48.9 °C CPU • 32.2 °C GPU</div>
+                        <div class="metric-sub">
+                            <span class="badge badge-success" id="stat-thermal-badge">Nominal (0 Throttling)</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-item">
+                        <span class="metric-label">Fréquence Processeur & Charge</span>
+                        <div class="metric-value" id="stat-cpu-freq">1600 MHz (4 Cœurs)</div>
+                        <div class="metric-sub" id="stat-cpu-load">Charge: 5.34 / 5.50 / 5.52</div>
+                    </div>
+                </div>
+
+                <!-- Systems Table -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">État des Services & Protections Fire OS</h3>
+                    </div>
+                    <table class="spec-table">
+                        <tr>
+                            <td class="col-name">Bouclier Mises à Jour (OTA Shield)</td>
+                            <td class="col-status"><span class="badge badge-success" id="status-ota">Gelé (Bloqué)</span></td>
+                            <td class="col-desc">Empêche les mises à jour silencieuses forcées par Amazon</td>
+                        </tr>
+                        <tr>
+                            <td class="col-name">Module Vocal Alexa (Remote Mic)</td>
+                            <td class="col-status"><span class="badge badge-success">Actif & Intouchable</span></td>
+                            <td class="col-desc">Bouton micro et recherche vocale préservés à 100%</td>
+                        </tr>
+                        <tr>
+                            <td class="col-name">Résolveur DNS Privé Chiffré (DoT)</td>
+                            <td class="col-status"><span class="badge badge-info" id="status-dns">dns.adguard.com</span></td>
+                            <td class="col-desc">Blocage niveau DNS des serveurs publicitaires et télémétriques</td>
+                        </tr>
+                        <tr>
+                            <td class="col-name">Lanceur Système Fire TV</td>
+                            <td class="col-status"><span class="badge badge-success">Actif</span></td>
+                            <td class="col-desc">Maintenu pour éliminer tout risque d'écran noir au démarrage</td>
+                        </tr>
+                        <tr>
+                            <td class="col-name">Paquets Désactivés (User 0)</td>
+                            <td class="col-status"><span class="badge badge-neutral" id="status-disabled-count">19 paquets</span></td>
+                            <td class="col-desc">Télémétrie ACR, boutiques inutiles et collecteurs d'audience</td>
+                        </tr>
+                        <tr>
+                            <td class="col-name">Compression ZRAM Swap</td>
+                            <td class="col-status"><span class="badge badge-info" id="status-zram">215 Mo compressés</span></td>
+                            <td class="col-desc">Mémoire d'échange compressée gérée par le noyau Linux</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Live Package Explorer Card -->
+                <div class="card" style="margin-top: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <div>
+                            <h3 style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Télémétrie Paquets (Live Explorer)</h3>
+                            <div style="font-size: 12px; color: var(--text-muted);" id="packages-summary">Chargement des 39 paquets...</div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary btn-sm active" id="btn-filter-all" onclick="setPackageFilter('all')">Tous</button>
+                            <button class="btn btn-secondary btn-sm" id="btn-filter-disabled" onclick="setPackageFilter('disabled')">Gelés</button>
+                            <button class="btn btn-secondary btn-sm" id="btn-filter-active" onclick="setPackageFilter('active')">Actifs</button>
+                        </div>
+                    </div>
+                    <div style="max-height: 280px; overflow-y: auto;">
+                        <table class="table-clean" id="packages-table">
+                            <thead>
+                                <tr>
+                                    <th>Paquet</th>
+                                    <th>Statut</th>
+                                    <th>Rôle & Protection</th>
+                                    <th style="text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="packages-tbody">
+                                <tr><td colspan="4" style="color: var(--text-muted); padding: 12px;">Chargement...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: DEBLOAT PROFILES -->
+            <section id="tab-debloat" class="tab-panel">
+                <div class="panel-desc">
+                    Sélectionnez la stratégie d'optimisation adaptée à votre usage. Les modifications appliquées restent intégralement réversibles sans réinitialiser la clé.
+                </div>
+
+                <div class="profiles-layout">
+                    <!-- Profile 1 -->
+                    <div class="profile-card selected" data-profile="balanced" id="prof-balanced">
+                        <div class="profile-card-header">
+                            <span class="profile-name">Profil Équilibré</span>
+                            <span class="badge badge-info">Recommandé</span>
+                        </div>
+                        <p class="panel-desc">Conserve l'écosystème de divertissement Amazon en supprimant toute télémétrie superflue et les bannières intrusives.</p>
+                        <ul class="profile-spec-list">
+                            <li>
+                                <svg class="icon-ok" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Reconnaissance vocale Alexa et télécommande 100% préservées</span>
+                            </li>
+                            <li>
+                                <svg class="icon-ok" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Prime Video, Amazon Photos et profils utilisateurs conservés</span>
+                            </li>
+                            <li>
+                                <svg class="icon-block" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                <span>Désactivation de la reconnaissance de contenu ACR et du profil publicitaire</span>
+                            </li>
+                            <li>
+                                <svg class="icon-block" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                <span>Coupure de la lecture vidéo et audio automatique des bannières d'accueil</span>
+                            </li>
+                            <li>
+                                <svg class="icon-ok" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Activation du résolveur DNS AdGuard DoT (filtrage chiffré)</span>
+                            </li>
+                            <li>
+                                <svg class="icon-ok" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Fluidité cinéma 24 fps et accélération des transitions d'interface</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Profile 2 -->
+                    <div class="profile-card" data-profile="streamer" id="prof-streamer">
+                        <div class="profile-card-header">
+                            <span class="profile-name">Profil Streamer (Allégé)</span>
+                            <span class="badge badge-neutral">Streaming Dédié</span>
+                        </div>
+                        <p class="panel-desc">Allègement maximal de l'empreinte mémoire pour les utilisateurs de Stremio, SmartTube, Kodi ou Plex.</p>
+                        <ul class="profile-spec-list">
+                            <li>
+                                <svg class="icon-ok" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Reconnaissance vocale Alexa et télécommande 100% préservées</span>
+                            </li>
+                            <li>
+                                <svg class="icon-block" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                <span>Désactivation de Prime Video, Amazon Music et Amazon Photos</span>
+                            </li>
+                            <li>
+                                <svg class="icon-block" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                <span>Coupure des synchronisations et services consommateurs de RAM</span>
+                            </li>
+                            <li>
+                                <svg class="icon-ok" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Activation du résolveur DNS AdGuard DoT (filtrage chiffré)</span>
+                            </li>
+                            <li>
+                                <svg class="icon-ok" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Libération maximale de mémoire physique pour le décodage vidéo</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; margin-top: 12px; gap: 12px; align-items: center;">
+                    <span id="apply-status" class="toolbar-feedback"></span>
+                    <button id="btn-apply-profile" class="btn btn-primary">
+                        Appliquer le profil sélectionné
+                    </button>
+                </div>
+
+                <!-- Advanced Hardware Tweaks Card -->
+                <div class="card" style="margin-top: 24px;">
+                    <div style="margin-bottom: 16px;">
+                        <h3 style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Réglages Matériel & Tweaks Avancés</h3>
+                        <div style="font-size: 12px; color: var(--text-muted);">Contrôle direct des modules audio, affichage cinéma, veille et résolveur DNS DoT</div>
+                    </div>
+
+                    <table class="table-clean" style="width: 100%;">
+                        <tbody>
+                            <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid var(--border-color);">
+                                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">Mode Ampli 5.1 Optique / SPDIF</div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">Force la sortie audio en Dolby Digital (AC-3) bitstream pour les amplificateurs et barres de son reliés en optique à la TV.</div>
+                                </td>
+                                <td style="padding: 12px 0; text-align: right; border-bottom: 1px solid var(--border-color);">
+                                    <button class="btn btn-secondary btn-sm" id="btn-toggle-optical" onclick="toggleOptical51()">
+                                        Chargement...
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid var(--border-color);">
+                                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">Sons de navigation télécommande</div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">Désactive les clics audio de navigation dans les menus Fire OS.</div>
+                                </td>
+                                <td style="padding: 12px 0; text-align: right; border-bottom: 1px solid var(--border-color);">
+                                    <button class="btn btn-secondary btn-sm" id="btn-toggle-navsounds" onclick="toggleNavSounds()">
+                                        Chargement...
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid var(--border-color);">
+                                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">Fluidité cinéma native (Match 24p)</div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">Aligne automatiquement le rafraîchissement HDMI sur la fréquence du contenu vidéo (24 fps sans saccades).</div>
+                                </td>
+                                <td style="padding: 12px 0; text-align: right; border-bottom: 1px solid var(--border-color);">
+                                    <button class="btn btn-secondary btn-sm" id="btn-toggle-matchframerate" onclick="toggleMatchFrameRate()">
+                                        Chargement...
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid var(--border-color);">
+                                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">Ambient Experience (Veille publicitaire)</div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">Désactive les widgets et tableaux sponsorisés pendant la veille de la Fire TV.</div>
+                                </td>
+                                <td style="padding: 12px 0; text-align: right; border-bottom: 1px solid var(--border-color);">
+                                    <button class="btn btn-secondary btn-sm" id="btn-toggle-ambient" onclick="toggleAmbient()">
+                                        Chargement...
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 12px 0;">
+                                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">Résolveur DNS Sécurisé (DoT Chiffré)</div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">Bloque les publicités système et les requêtes de traçage via DNS chiffré.</div>
+                                </td>
+                                <td style="padding: 12px 0; text-align: right;">
+                                    <select id="select-dns" onchange="changeDNS(this.value)" style="background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 4px; padding: 6px 10px; font-size: 12px; font-family: inherit;">
+                                        <option value="adguard">AdGuard (Anti-Pub & Télémétrie)</option>
+                                        <option value="quad9">Quad9 (Sécurité & Malwares)</option>
+                                        <option value="cloudflare">Cloudflare (1.1.1.1 Rapide)</option>
+                                        <option value="family">AdGuard Famille (Parental)</option>
+                                        <option value="off">Désactivé (Opérateur Wi-Fi)</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- TAB 3: ROLLBACK -->
+            <section id="tab-rollback" class="tab-panel">
+                <div class="panel">
+                    <h3 class="panel-title">Restauration Complète de l'Appareil</h3>
+                    <p class="panel-desc">WaterStick fonctionne sans altération irréversible du firmware. Cette commande restaure la configuration d'usine Amazon de manière immédiate :</p>
+                    
+                    <table class="spec-table" style="margin-bottom: 20px;">
+                        <tr>
+                            <td class="col-name">Paquets système</td>
+                            <td class="col-desc">Réactivation de tous les 19 composants désactivés via <code>pm enable</code></td>
+                        </tr>
+                        <tr>
+                            <td class="col-name">Bannières d'accueil</td>
+                            <td class="col-desc">Rétablissement de la lecture vidéo et audio automatique</td>
+                        </tr>
+                        <tr>
+                            <td class="col-name">Résolution DNS</td>
+                            <td class="col-desc">Désactivation du mode DoT et retour au DNS assigné par votre box Wi-Fi</td>
+                        </tr>
+                        <tr>
+                            <td class="col-name">Animations</td>
+                            <td class="col-desc">Rétablissement des échelles de transition à 1.0x standard</td>
+                        </tr>
+                    </table>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span id="rollback-status" class="toolbar-feedback"></span>
+                        <button id="btn-rollback" class="btn btn-danger">
+                            Restaurer la configuration d'origine
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: SIDELOAD APPS -->
+            <section id="tab-sideload" class="tab-panel">
+                <div class="panel-desc">
+                    Applications de lecture et de navigation vérifiées pour Fire OS 8, installables directement via le protocole ADB sans clé USB :
+                </div>
+
+                <div class="panel" style="padding: 0;">
+                    <div id="apps-container">
+                        <!-- Populated dynamically via app.js -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: CONNECT -->
+            <section id="tab-connect" class="tab-panel">
+                <div class="panel">
+                    <h3 class="panel-title">Connexion à une Clé Fire TV</h3>
+                    <p class="panel-desc">Pour jumeler votre ordinateur à la Fire TV via le réseau local :</p>
+                    
+                    <table class="spec-table" style="margin-bottom: 20px;">
+                        <tr>
+                            <td class="col-name">1. Options développeur</td>
+                            <td class="col-desc">Paramètres > Ma Fire TV > À propos. Appuyez 7 fois sur le nom de l'appareil.</td>
+                        </tr>
+                        <tr>
+                            <td class="col-name">2. Débogage ADB</td>
+                            <td class="col-desc">Revenez à Options pour les développeurs > Activez le Débogage ADB.</td>
+                        </tr>
+                        <tr>
+                            <td class="col-name">3. Adresse IP</td>
+                            <td class="col-desc">Dans À propos > Réseau, relevez l'adresse IP locale.</td>
+                        </tr>
+                    </table>
+
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" id="ip-input" class="input-field" placeholder="192.168.1.50" value="192.168.1.50" style="width: 240px;">
+                        <button id="btn-connect" class="btn btn-primary">Connecter</button>
+                        <button id="btn-disconnect" class="btn btn-secondary">Déconnecter</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Confirmation Modal Dialog -->
+    <div id="modal-confirm" class="modal-backdrop">
+        <div class="modal-box">
+            <h3 id="modal-title">Confirmer la restauration</h3>
+            <p id="modal-desc">Voulez-vous réactiver tous les paquets Amazon désactivés et rétablir les réglages d'origine ?</p>
+            <div class="modal-actions">
+                <button id="modal-btn-cancel" class="btn btn-secondary">Annuler</button>
+                <button id="modal-btn-confirm" class="btn btn-danger">Confirmer</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="./app.js"></script>
+</body>
+</html>
