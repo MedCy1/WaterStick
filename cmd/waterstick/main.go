@@ -25,6 +25,7 @@ func main() {
 	rootCmd := &cobra.Command{
 		Use:     "waterstick",
 		Version: updater.FormatVersion(version),
+		Args:    cobra.NoArgs,
 		Short:   "WaterStick - Fire TV Stick 4K Max 2nd Gen Debloat & Optimization Suite",
 		Long: `WaterStick is a safe, non-destructive, and reversible optimization suite
 tailored for Amazon Fire TV Stick 4K Max 2nd Gen (Fire OS 8 / Android 11).
@@ -984,10 +985,7 @@ func installCompletion(rootCmd *cobra.Command, requestedShell string) error {
 			if fi, err := os.Stat(completionsDir); err == nil && fi.IsDir() {
 				targetFile := filepath.Join(completionsDir, "waterstick.zsh")
 				snippet := "# waterstick tab completion\nif command -v waterstick &>/dev/null; then\n    compdef _waterstick waterstick\n    eval \"$(waterstick completion zsh)\"\nfi\n"
-				if err := os.WriteFile(targetFile, []byte(snippet), 0644); err == nil {
-					fmt.Printf("Shell autocompletion for zsh (HyDE / ZDOTDIR) successfully installed in %s!\n", targetFile)
-					return nil
-				}
+				_ = os.WriteFile(targetFile, []byte(snippet), 0644)
 			}
 		}
 
@@ -1010,7 +1008,7 @@ func installCompletion(rootCmd *cobra.Command, requestedShell string) error {
 			return fmt.Errorf("failed to append completion snippet: %w", err)
 		}
 		fmt.Printf("Shell autocompletion for zsh successfully installed in %s!\n", zshrc)
-		fmt.Println("Run 'source ~/.zshrc' or open a new terminal tab to activate it.")
+		fmt.Printf("Run 'source %s' or open a new terminal tab to activate it.\n", zshrc)
 		return nil
 
 	case strings.Contains(shellName, "bash"):
