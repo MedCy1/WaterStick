@@ -1,6 +1,15 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "apps": [
+    {
+      "id": "wateros-launcher",
+      "name": "WaterOS Launcher",
+      "description": "Launcher TV officiel WaterOS : ultra-leger (~2 Mo), sans pub, multi-themes, focus D-Pad natif.",
+      "category": "launcher",
+      "package_name": "com.medcy1.wateros.launcher",
+      "download_url": "https://github.com/MedCy1/WaterOS-Launcher/releases/download/v1.0.0/app-release.apk",
+      "website": "https://github.com/MedCy1/WaterOS-Launcher"
+    },
     {
       "id": "smarttube",
       "name": "SmartTube",
