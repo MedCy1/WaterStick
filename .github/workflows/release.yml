@@ -91,10 +91,18 @@ jobs:
               ./cmd/waterstick-tui
 
             cp README.md "${STAGE_DIR}/"
+            cp LICENSE "${STAGE_DIR}/"
+
+            if [ "$os" = "windows" ]; then
+              sudo apt-get update && sudo apt-get install -y nsis
+              cp packaging/windows/installer.nsi "$STAGE_DIR/"
+              (cd "$STAGE_DIR" && makensis -DAPP_VERSION="${TAG#v}" installer.nsi)
+              mv "${STAGE_DIR}/waterstick-setup-${TAG#v}-windows-amd64.exe" "${DIST_DIR}/"
+            fi
 
             ARCHIVE_NAME="waterstick_${TAG}_${os}_${arch}"
             if [ "$format" = "zip" ]; then
-              (cd "$STAGE_DIR" && zip -9 -r "../${DIST_DIR}/${ARCHIVE_NAME}.zip" .)
+              (cd "$STAGE_DIR" && zip -9 -r "../${DIST_DIR}/${ARCHIVE_NAME}.zip" . -x "*.nsi")
             else
               tar -czvf "${DIST_DIR}/${ARCHIVE_NAME}.tar.gz" -C "$STAGE_DIR" .
             fi
@@ -103,7 +111,7 @@ jobs:
           done
 
           cd "$DIST_DIR"
-          sha256sum *.tar.gz *.zip > checksums.txt
+          sha256sum *.tar.gz *.zip *.exe > checksums.txt
           cat checksums.txt
 
       - name: Create GitHub Release
@@ -113,6 +121,7 @@ jobs:
           files: |
             dist_release/*.tar.gz
             dist_release/*.zip
+            dist_release/*.exe
             dist_release/checksums.txt
           draft: false
           prerelease: false

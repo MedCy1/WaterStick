@@ -13,6 +13,7 @@ import (
 	"github.com/MedCy1/WaterStick/pkg/waterstick"
 	"github.com/MedCy1/WaterStick/pkg/waterstick/models"
 	"github.com/MedCy1/WaterStick/pkg/waterstick/tuning"
+	"github.com/MedCy1/WaterStick/pkg/waterstick/updater"
 )
 
 var version = "dev"
@@ -29,15 +30,17 @@ const (
 
 type tickMsg time.Time
 type pollMsg time.Time
+type updateAvailableMsg string
 
 type model struct {
-	engine       *waterstick.Engine
-	activeTab    tabIndex
-	targetDevice string
-	deviceInfo   *models.Device
-	ipInput      string
-	statusMsg    string
-	isBusy       bool
+	engine          *waterstick.Engine
+	activeTab       tabIndex
+	targetDevice    string
+	deviceInfo      *models.Device
+	ipInput         string
+	statusMsg       string
+	isBusy          bool
+	updateAvailable string
 	packages     []models.Package
 	selectedProf string
 	apps         []models.SideloadApp
@@ -129,11 +132,20 @@ func pollCmd() tea.Cmd {
 }
 
 func (m model) Init() tea.Cmd {
-	cmds := []tea.Cmd{tickCmd(), pollCmd()}
+	cmds := []tea.Cmd{tickCmd(), pollCmd(), func() tea.Msg { return checkUpdateCmd() }}
 	if m.targetDevice != "" {
 		cmds = append(cmds, m.fetchDiagnosticsCmd())
 	}
 	return tea.Batch(cmds...)
+}
+
+func checkUpdateCmd() tea.Msg {
+	u := updater.NewUpdateChecker()
+	rel, isNewer, err := u.CheckLatest(context.Background(), version)
+	if err == nil && isNewer {
+		return updateAvailableMsg(rel.TagName)
+	}
+	return nil
 }
 
 type diagMsg struct {
@@ -443,6 +455,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		return m, nil
+
+	case updateAvailableMsg:
+		m.updateAvailable = string(msg)
 		return m, nil
 
 	case tickMsg:
@@ -1196,6 +1212,9 @@ func (m model) View() tea.View {
 
 	helpStyled := lipgloss.NewStyle().Foreground(cTextMuted).Render(helpText)
 	creditsStyled := lipgloss.NewStyle().Foreground(cBorderDim).Render("WaterStick v" + version + " • github.com/MedCy1")
+	if m.updateAvailable != "" {
+		creditsStyled = lipgloss.NewStyle().Foreground(cAmber).Render(fmt.Sprintf("[Mise à jour %s disponible : tapez 'waterstick update'] ", m.updateAvailable)) + lipgloss.NewStyle().Foreground(cBorderDim).Render("WaterStick v" + version + " • github.com/MedCy1")
+	}
 	footerGap := contentWidth - lipgloss.Width(helpStyled) - lipgloss.Width(creditsStyled)
 	if footerGap > 2 {
 		s.WriteString(lipgloss.JoinHorizontal(lipgloss.Center, helpStyled, strings.Repeat(" ", footerGap), creditsStyled))

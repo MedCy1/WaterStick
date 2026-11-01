@@ -9,6 +9,7 @@ import (
 
 	"github.com/MedCy1/WaterStick/pkg/waterstick"
 	"github.com/MedCy1/WaterStick/pkg/waterstick/models"
+	"github.com/MedCy1/WaterStick/pkg/waterstick/updater"
 	"github.com/spf13/cobra"
 )
 
@@ -828,7 +829,56 @@ the Alexa voice remote control.`,
 		},
 	}
 
-	rootCmd.AddCommand(connectCmd, disconnectCmd, devicesCmd, healthCmd, packagesCmd, freezeCmd, unfreezeCmd, debloatCmd, rollbackCmd, sideloadCmd, listAppsCmd, otaCmd, purgeCmd, tweakCmd, tuiCmd, guiCmd, aboutCmd)
+	// 15. update
+	var checkOnlyFlag bool
+	updateCmd := &cobra.Command{
+		Use:   "update",
+		Short: "Check for and apply automatic WaterStick updates from GitHub",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := context.Background()
+			u := updater.NewUpdateChecker()
+
+			fmt.Println("Checking for latest release on GitHub...")
+			rel, isNewer, err := u.CheckLatest(ctx, version)
+			if err != nil {
+				return fmt.Errorf("update check failed: %w", err)
+			}
+
+			if !isNewer {
+				fmt.Printf("WaterStick is already up to date (current: %s, latest: %s).\n", version, rel.TagName)
+				return nil
+			}
+
+			fmt.Printf("A new version of WaterStick is available: %s -> %s\n", version, rel.TagName)
+			if rel.Body != "" {
+				fmt.Println("\nRelease Notes:")
+				lines := strings.Split(rel.Body, "\n")
+				for _, line := range lines {
+					fmt.Println("  " + line)
+				}
+				fmt.Println()
+			}
+
+			if checkOnlyFlag {
+				fmt.Println("Run 'waterstick update' to download and install this update.")
+				return nil
+			}
+
+			fmt.Println("Starting update...")
+			err = u.PerformSelfUpdate(ctx, version, func(pct int, msg string) {
+				fmt.Printf("[%d%%] %s\n", pct, msg)
+			})
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("\nUpdate completed successfully! Run 'waterstick --version' or 'waterstick about' to verify.")
+			return nil
+		},
+	}
+	updateCmd.Flags().BoolVar(&checkOnlyFlag, "check", false, "Only check if an update is available without installing")
+
+	rootCmd.AddCommand(connectCmd, disconnectCmd, devicesCmd, healthCmd, packagesCmd, freezeCmd, unfreezeCmd, debloatCmd, rollbackCmd, sideloadCmd, listAppsCmd, otaCmd, purgeCmd, tweakCmd, tuiCmd, guiCmd, aboutCmd, updateCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

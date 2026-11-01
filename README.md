@@ -34,26 +34,36 @@ WaterStick provides three interfaces built on the same core packages:
 3. Open **Developer Options > ADB Debugging** and toggle it **ON**.
 4. Note the device IP address shown in **Settings > My Fire TV > About > Network**.
 
-### 2. Build and run
+### 2. Installation options
 
+#### Windows graphic setup
+Download `waterstick-setup-<version>-windows-amd64.exe` from the latest GitHub Release, run the setup wizard, and launch WaterStick directly from the Desktop or Start Menu.
+
+#### Linux and macOS script installer
+```bash
+curl -fsSL https://raw.githubusercontent.com/MedCy1/WaterStick/main/install.sh | bash
+```
+
+#### Windows PowerShell script installer
+```powershell
+irm https://raw.githubusercontent.com/MedCy1/WaterStick/main/install.ps1 | iex
+```
+
+#### Standalone portable archives
+Download the matching archive for your operating system (`.tar.gz` for Linux and macOS, `.zip` for Windows) from GitHub Releases and run `waterstick` directly without installing.
+
+#### Building from source
 ```bash
 git clone https://github.com/MedCy1/WaterStick.git
 cd WaterStick
-
-# Build all three interfaces
 make build
-
-# Launch the terminal dashboard
-./bin/waterstick-tui
-
-# Launch the desktop application
-./bin/waterstick-gui
-
-# Or run directly via the CLI
-./bin/waterstick connect 192.168.1.50
-./bin/waterstick health
-./bin/waterstick debloat --profile balanced
 ```
+
+#### Automatic updates
+* In the desktop GUI: An update banner appears when a new version is available; click "Installer" to update.
+* In the CLI: Run `waterstick update` to download and apply the latest release in-place, or `waterstick update --check` to inspect available updates.
+
+### 3. Usage examples
 
 If `adb` is not installed on your system, WaterStick downloads Google platform-tools into your user cache directory automatically.
 

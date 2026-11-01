@@ -514,6 +514,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
         console.log('No active device yet');
     }
+
+    // Check for application updates in the background
+    checkForAppUpdates();
 });
 
 // -------------------------------------------------------------
@@ -657,4 +660,36 @@ window.changeDNS = async function(val) {
         showToast('Erreur DNS : ' + e, 'error');
     }
 };
+
+async function checkForAppUpdates() {
+    try {
+        const res = await callGo('CheckUpdate');
+        if (res && res.available) {
+            const badge = document.getElementById('update-badge');
+            const txt = document.getElementById('update-text');
+            const btn = document.getElementById('btn-apply-update');
+            if (badge && txt && btn) {
+                txt.textContent = 'Mise à jour ' + res.latest_version + ' disponible';
+                badge.style.display = 'flex';
+                btn.onclick = async function() {
+                    btn.disabled = true;
+                    btn.textContent = 'Installation...';
+                    showToast('Téléchargement et installation de la mise à jour...', 'info');
+                    try {
+                        const msg = await callGo('ApplyUpdate');
+                        showToast(msg, 'success');
+                        txt.textContent = 'Mise à jour terminée';
+                        btn.textContent = 'Terminé';
+                    } catch (err) {
+                        showToast('Erreur mise à jour : ' + err, 'error');
+                        btn.disabled = false;
+                        btn.textContent = 'Réessayer';
+                    }
+                };
+            }
+        }
+    } catch (e) {
+        // Silent catch for background check
+    }
+}
 

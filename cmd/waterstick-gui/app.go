@@ -7,6 +7,7 @@ import (
 
 	"github.com/MedCy1/WaterStick/pkg/waterstick"
 	"github.com/MedCy1/WaterStick/pkg/waterstick/models"
+	"github.com/MedCy1/WaterStick/pkg/waterstick/updater"
 )
 
 // App struct handles desktop UI interactions and routes them to the WaterStick core engine.
@@ -320,6 +321,39 @@ func (a *App) SetDNS(provider string) (string, error) {
 	}
 	cfg, _ := a.engine.GetDNSTweakConfig(a.ctx, target)
 	return fmt.Sprintf("DoT DNS configuré : %s", cfg.ProviderName), nil
+}
+
+// UpdateCheckResult holds release update info for the desktop GUI.
+type UpdateCheckResult struct {
+	Available      bool   `json:"available"`
+	CurrentVersion string `json:"current_version"`
+	LatestVersion  string `json:"latest_version"`
+	ReleaseNotes   string `json:"release_notes"`
+}
+
+// CheckUpdate queries GitHub for the latest release and reports if an update is available.
+func (a *App) CheckUpdate() (*UpdateCheckResult, error) {
+	u := updater.NewUpdateChecker()
+	rel, isNewer, err := u.CheckLatest(a.ctx, version)
+	if err != nil {
+		return nil, err
+	}
+	return &UpdateCheckResult{
+		Available:      isNewer,
+		CurrentVersion: version,
+		LatestVersion:  rel.TagName,
+		ReleaseNotes:   rel.Body,
+	}, nil
+}
+
+// ApplyUpdate downloads and installs the latest version in-place.
+func (a *App) ApplyUpdate() (string, error) {
+	u := updater.NewUpdateChecker()
+	err := u.PerformSelfUpdate(a.ctx, version, nil)
+	if err != nil {
+		return "", err
+	}
+	return "Mise à jour installée avec succès. Veuillez relancer l'application.", nil
 }
 
 
