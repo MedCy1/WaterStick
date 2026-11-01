@@ -1,0 +1,361 @@
+{
+  "version": "1.0.0",
+  "device_targets": [
+    "Fire TV Stick 4K Max (2nd Gen)",
+    "Fire OS 8",
+    "Generic Fire TV"
+  ],
+  "packages": [
+    {
+      "id": "com.amazon.tv.ime",
+      "name": "Fire TV Virtual Keyboard",
+      "description": "On-screen keyboard. Required for entering passwords and typing in all apps.",
+      "tier": "tier_0_hardlocked",
+      "category": "system",
+      "risk": "critical",
+      "recommendation": "never_disable"
+    },
+    {
+      "id": "com.amazon.tv.settings.v2",
+      "name": "Fire TV Settings V2",
+      "description": "System settings menu, network configuration, and device preferences.",
+      "tier": "tier_0_hardlocked",
+      "category": "system",
+      "risk": "critical",
+      "recommendation": "never_disable"
+    },
+    {
+      "id": "com.amazon.tv.launcher",
+      "name": "Fire TV Stock Launcher",
+      "description": "Default home screen interface. Disabling on Fire OS 8 causes immediate black screen and bootloop.",
+      "tier": "tier_0_hardlocked",
+      "category": "system",
+      "risk": "critical",
+      "recommendation": "never_disable"
+    },
+    {
+      "id": "com.amazon.whisperplay.contracts",
+      "name": "Whisperplay Contracts",
+      "description": "Local device discovery, mobile app pairing, and phone remote control framework.",
+      "tier": "tier_0_hardlocked",
+      "category": "connectivity",
+      "risk": "critical",
+      "recommendation": "never_disable"
+    },
+    {
+      "id": "com.amazon.whisperlink.core.android",
+      "name": "Whisperlink Core",
+      "description": "Core protocol for Fire TV phone remote control and local network handshakes.",
+      "tier": "tier_0_hardlocked",
+      "category": "connectivity",
+      "risk": "critical",
+      "recommendation": "never_disable"
+    },
+    {
+      "id": "com.amazon.avl.ftv",
+      "name": "Alexa Voice Layer for Fire TV",
+      "description": "Processes voice queries sent from the remote control microphone.",
+      "tier": "tier_voice",
+      "category": "voice",
+      "risk": "medium",
+      "recommendation": "keep_for_voice"
+    },
+    {
+      "id": "com.amazon.aria",
+      "name": "Alexa Aria Runtime",
+      "description": "Runtime execution engine for Alexa voice actions and skills on Fire TV.",
+      "tier": "tier_voice",
+      "category": "voice",
+      "risk": "medium",
+      "recommendation": "keep_for_voice"
+    },
+    {
+      "id": "com.amazon.vizzini",
+      "name": "Alexa Media Player & Voice Support",
+      "description": "Handles audio streaming and sound playback for voice responses and media requests.",
+      "tier": "tier_voice",
+      "category": "voice",
+      "risk": "medium",
+      "recommendation": "keep_for_voice"
+    },
+    {
+      "id": "com.amazon.ale",
+      "name": "Amazon Language Engine",
+      "description": "Speech-to-text parsing and intent translation for Alexa microphone inputs.",
+      "tier": "tier_voice",
+      "category": "voice",
+      "risk": "medium",
+      "recommendation": "keep_for_voice"
+    },
+    {
+      "id": "com.amazon.aca",
+      "name": "Alexa Companion App Client",
+      "description": "Handles notifications and companion features for Alexa on Fire TV.",
+      "tier": "tier_voice",
+      "category": "voice",
+      "risk": "low",
+      "recommendation": "keep_for_voice"
+    },
+    {
+      "id": "com.amazon.tv.acr",
+      "name": "Automatic Content Recognition (ACR)",
+      "description": "Fingerprints displayed video content in real-time to report viewing habits for targeted advertising.",
+      "tier": "tier_safe",
+      "category": "telemetry",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.hybridadidservice",
+      "name": "Hybrid Advertising ID Service",
+      "description": "Tracks cross-app usage to create behavioral advertising profiles.",
+      "tier": "tier_safe",
+      "category": "telemetry",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.dp.logger",
+      "name": "Amazon Diagnostic Logger",
+      "description": "Continuously records and uploads debug diagnostic logs and device metrics in the background.",
+      "tier": "tier_safe",
+      "category": "telemetry",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.device.metrics",
+      "name": "Device Metrics Daemon",
+      "description": "Monitors and uploads hardware utilization statistics and usage behavior.",
+      "tier": "tier_safe",
+      "category": "telemetry",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.tv.fw.metrics",
+      "name": "Firmware Metrics Service",
+      "description": "Fire TV firmware telemetry and operating system reporting service.",
+      "tier": "tier_safe",
+      "category": "telemetry",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.adep",
+      "name": "Amazon Data Event Pipeline",
+      "description": "Telemetry pipeline sending user interactions and UI events to Amazon servers.",
+      "tier": "tier_safe",
+      "category": "telemetry",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.recess",
+      "name": "Amazon Recess Games Hub",
+      "description": "Promotional casual gaming hub and sponsored trial game downloads.",
+      "tier": "tier_safe",
+      "category": "bloatware",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.ceviche",
+      "name": "Live TV Aggregator (Ceviche)",
+      "description": "Promotional channel aggregator inserting sponsored linear TV channels into the home guide.",
+      "tier": "tier_safe",
+      "category": "bloatware",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.ftv.screensaver",
+      "name": "Promotional Screensaver Prefetcher",
+      "description": "Prefetches promotional movie posters and full-screen ad wallpapers for the default screensaver.",
+      "tier": "tier_safe",
+      "category": "bloatware",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.ods.kindleconnect",
+      "name": "Kindle Connect Screen Share Support",
+      "description": "Remote desktop diagnostic stub used exclusively by Amazon customer support agents.",
+      "tier": "tier_safe",
+      "category": "bloatware",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.bueller.music",
+      "name": "Amazon Music TV Service",
+      "description": "Background sync service and default TV client for Amazon Music streaming.",
+      "tier": "tier_safe",
+      "category": "bloatware",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.avod",
+      "name": "Amazon Prime Video",
+      "description": "Official Prime Video application and integration.",
+      "tier": "tier_consumer",
+      "category": "streaming",
+      "risk": "low",
+      "recommendation": "keep_in_balanced"
+    },
+    {
+      "id": "com.amazon.bueller.photos",
+      "name": "Amazon Photos Cloud Sync",
+      "description": "Amazon Photos viewer and personal screensaver wallpaper provider.",
+      "tier": "tier_consumer",
+      "category": "media",
+      "risk": "low",
+      "recommendation": "keep_in_balanced"
+    },
+    {
+      "id": "com.amazon.kindle",
+      "name": "Amazon Kindle Reader",
+      "description": "Kindle book reader application on Fire TV.",
+      "tier": "tier_consumer",
+      "category": "media",
+      "risk": "none",
+      "recommendation": "disable_in_streamer"
+    },
+    {
+      "id": "com.amazon.cloud9",
+      "name": "Amazon Silk Web Browser",
+      "description": "Default web browser pre-installed on Fire TV devices.",
+      "tier": "tier_consumer",
+      "category": "utility",
+      "risk": "none",
+      "recommendation": "optional"
+    },
+    {
+      "id": "com.amazon.shoptv.client",
+      "name": "Amazon Shop on TV Client",
+      "description": "Shopping on TV interface and commercial advertising integration.",
+      "tier": "tier_safe",
+      "category": "bloatware",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.shoptv.firetv.client",
+      "name": "Amazon Shop on TV Service",
+      "description": "Background service for TV shopping campaigns.",
+      "tier": "tier_safe",
+      "category": "bloatware",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.gamehub",
+      "name": "Amazon Game Hub",
+      "description": "Promotional games discovery center and casual games marketplace.",
+      "tier": "tier_safe",
+      "category": "bloatware",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.ftvads.deeplinking",
+      "name": "Fire TV Ads Deep Linking",
+      "description": "Routes interactive home screen banner advertisements into sponsored content.",
+      "tier": "tier_safe",
+      "category": "bloatware",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.kso.blackbird",
+      "name": "Kindle Special Offers (KSO)",
+      "description": "Special Offers framework used to display full-screen lockscreen and banner ads.",
+      "tier": "tier_safe",
+      "category": "bloatware",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.minitv.android.app",
+      "name": "Amazon miniTV Promo App",
+      "description": "Ad-supported short video streaming promo channel.",
+      "tier": "tier_safe",
+      "category": "bloatware",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.device.telemetry.emitter",
+      "name": "Telemetry Emitter Daemon",
+      "description": "Transmits real-time device diagnostic and usage telemetry.",
+      "tier": "tier_safe",
+      "category": "telemetry",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.wirelessmetrics.service",
+      "name": "Wireless Metrics Service",
+      "description": "Monitors and logs Wi-Fi signal parameters and network metrics.",
+      "tier": "tier_safe",
+      "category": "telemetry",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.client.metrics.api",
+      "name": "Amazon Client Metrics API",
+      "description": "Internal API endpoint used by apps to submit analytics metrics.",
+      "tier": "tier_safe",
+      "category": "telemetry",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.logan",
+      "name": "Logan Diagnostic Logging",
+      "description": "Background crash and diagnostic log harvesting service.",
+      "tier": "tier_safe",
+      "category": "telemetry",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.neo.minerva.logcat",
+      "name": "Minerva Logcat Recorder",
+      "description": "Records system logcat buffers and transmits them for remote analysis.",
+      "tier": "tier_safe",
+      "category": "telemetry",
+      "risk": "none",
+      "recommendation": "disable"
+    },
+    {
+      "id": "com.amazon.alexa.datastore.app",
+      "name": "Alexa Datastore Client",
+      "description": "Local datastore synchronization layer for Alexa smart home directives.",
+      "tier": "tier_voice",
+      "category": "voice",
+      "risk": "medium",
+      "recommendation": "keep_for_voice"
+    },
+    {
+      "id": "com.amazon.alexamediaplayer.runtime.ftv",
+      "name": "Alexa Media Player Runtime for Fire TV",
+      "description": "Audio player runtime executing audio prompts for voice commands.",
+      "tier": "tier_voice",
+      "category": "voice",
+      "risk": "medium",
+      "recommendation": "keep_for_voice"
+    },
+    {
+      "id": "com.amazon.alexadirectivebrokerservice",
+      "name": "Alexa Directive Broker Service",
+      "description": "Dispatches voice commands to active applications and system components.",
+      "tier": "tier_voice",
+      "category": "voice",
+      "risk": "medium",
+      "recommendation": "keep_for_voice"
+    }
+  ]
+}
