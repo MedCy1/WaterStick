@@ -971,7 +971,9 @@ func installCompletion(rootCmd *cobra.Command, requestedShell string) error {
 
 	switch {
 	case strings.Contains(shellName, "zsh"):
-		// Check for ZDOTDIR or ~/.config/zsh (used by HyDE and modern zsh setups)
+		// Determine ZDOTDIR:
+		// 1. Explicit $ZDOTDIR
+		// 2. ~/.config/zsh if it exists (standard HyDE and XDG zsh setups)
 		zdotdir := os.Getenv("ZDOTDIR")
 		if zdotdir == "" {
 			cfgZsh := filepath.Join(homeDir, ".config", "zsh")
@@ -980,19 +982,46 @@ func installCompletion(rootCmd *cobra.Command, requestedShell string) error {
 			}
 		}
 
+		// Tier 1: HyDE's modular completions directory ($ZDOTDIR/completions/)
 		if zdotdir != "" {
 			completionsDir := filepath.Join(zdotdir, "completions")
 			if fi, err := os.Stat(completionsDir); err == nil && fi.IsDir() {
 				targetFile := filepath.Join(completionsDir, "waterstick.zsh")
-				snippet := "# waterstick tab completion\nif command -v waterstick &>/dev/null; then\n    compdef _waterstick waterstick\n    eval \"$(waterstick completion zsh)\"\nfi\n"
+				snippet := "# waterstick tab completion for HyDE\nif command -v waterstick &>/dev/null; then\n    compdef _waterstick waterstick\n    eval \"$(waterstick completion zsh)\"\nfi\n"
 				_ = os.WriteFile(targetFile, []byte(snippet), 0644)
+
+				// Also write native _waterstick for fpath autoloaders
+				fpathTarget := filepath.Join(completionsDir, "_waterstick")
+				if f, err := os.Create(fpathTarget); err == nil {
+					_ = rootCmd.GenZshCompletion(f)
+					f.Close()
+				}
 			}
 		}
 
+		// Tier 2: Oh-My-Zsh custom completions directory
+		omzCustom := os.Getenv("ZSH_CUSTOM")
+		if omzCustom == "" {
+			omzCustom = filepath.Join(homeDir, ".oh-my-zsh", "custom")
+		}
+		omzCompDir := filepath.Join(omzCustom, "completions")
+		if fi, err := os.Stat(omzCompDir); err == nil && fi.IsDir() {
+			omzTarget := filepath.Join(omzCompDir, "_waterstick")
+			if f, err := os.Create(omzTarget); err == nil {
+				_ = rootCmd.GenZshCompletion(f)
+				f.Close()
+			}
+		}
+
+		// Tier 3: Active configuration file (HyDE $ZDOTDIR/.zshrc or standard ~/.zshrc)
 		zshrc := filepath.Join(homeDir, ".zshrc")
 		if zdotdir != "" {
-			zshrc = filepath.Join(zdotdir, ".zshrc")
+			candidate := filepath.Join(zdotdir, ".zshrc")
+			if fi, err := os.Stat(candidate); err == nil && !fi.IsDir() {
+				zshrc = candidate
+			}
 		}
+
 		content, _ := os.ReadFile(zshrc)
 		if strings.Contains(string(content), "waterstick completion zsh") {
 			fmt.Printf("Shell autocompletion for zsh is already configured in %s.\n", zshrc)

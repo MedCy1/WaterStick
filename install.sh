@@ -57,6 +57,28 @@ echo "  - $INSTALL_DIR/waterstick-tui (Dashboard)"
 # Automatically install shell autocompletion
 "$INSTALL_DIR/waterstick" completion install >/dev/null 2>&1 || true
 
+# On Linux, create desktop entry for application launchers (Rofi, Wofi, HyDE, GNOME, KDE)
+if [ "$GOOS" = "linux" ]; then
+  DESKTOP_DIR="$HOME/.local/share/applications"
+  if mkdir -p "$DESKTOP_DIR" 2>/dev/null; then
+    cat <<EOF > "$DESKTOP_DIR/waterstick.desktop"
+[Desktop Entry]
+Name=WaterStick
+Comment=Fire TV Stick 4K Max Debloat & Optimization Suite
+Exec=$INSTALL_DIR/waterstick-tui
+Terminal=true
+Type=Application
+Icon=utilities-terminal
+Categories=Utility;System;
+Keywords=firetv;adb;debloat;optimization;
+EOF
+    chmod 644 "$DESKTOP_DIR/waterstick.desktop" 2>/dev/null || true
+    if command -v update-desktop-database >/dev/null 2>&1; then
+      update-desktop-database "$DESKTOP_DIR" >/dev/null 2>&1 || true
+    fi
+  fi
+fi
+
 case ":$PATH:" in
   *":$INSTALL_DIR:"*) ;;
   *)
