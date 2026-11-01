@@ -1,0 +1,847 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+
+	"github.com/MedCy1/WaterStick/pkg/waterstick"
+	"github.com/MedCy1/WaterStick/pkg/waterstick/models"
+	"github.com/spf13/cobra"
+)
+
+var (
+	version      = "dev"
+	targetDevice string
+	adbPath      string
+)
+
+func main() {
+	rootCmd := &cobra.Command{
+		Use:     "waterstick",
+		Version: version,
+		Short:   "WaterStick - Fire TV Stick 4K Max 2nd Gen Debloat & Optimization Suite",
+		Long: `WaterStick is a safe, non-destructive, and reversible optimization suite
+tailored for Amazon Fire TV Stick 4K Max 2nd Gen (Fire OS 8 / Android 11).
+
+It silences video/audio ads, blocks tracking via private encrypted DNS,
+boosts memory, and accelerates UI responsiveness while preserving 100% of
+the Alexa voice remote control.`,
+	}
+
+	rootCmd.PersistentFlags().StringVarP(&targetDevice, "device", "d", "", "Target Fire TV IP or serial (e.g. 192.168.1.50:5555)")
+	rootCmd.PersistentFlags().StringVar(&adbPath, "adb-path", "", "Custom path to ADB executable")
+
+	// 1. connect
+	connectCmd := &cobra.Command{
+		Use:   "connect <IP[:port]>",
+		Short: "Connect to a Fire TV stick over Wi-Fi",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+
+			fmt.Println("Ensuring ADB platform-tools are ready...")
+			_, err = engine.ADB.EnsureADB(ctx, func(pct int, msg string) {
+				fmt.Printf("[%d%%] %s\n", pct, msg)
+			})
+			if err != nil {
+				return err
+			}
+
+			ip := args[0]
+			fmt.Printf("Connecting to %s...\n", ip)
+			if err := engine.ADB.Connect(ctx, ip); err != nil {
+				return err
+			}
+			fmt.Printf("[OK] Connexion établie avec succès : %s\n", ip)
+			return nil
+		},
+	}
+
+	// 1b. disconnect
+	disconnectCmd := &cobra.Command{
+		Use:   "disconnect [IP[:port]]",
+		Short: "Disconnect from a Fire TV stick",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			target := targetDevice
+			if len(args) > 0 {
+				target = args[0]
+			}
+			if target == "" {
+				target = resolveDevice(engine, "")
+			}
+			if target == "" {
+				return fmt.Errorf("no connected device to disconnect")
+			}
+			fmt.Printf("Disconnecting from %s...\n", target)
+			if err := engine.ADB.Disconnect(ctx, target); err != nil {
+				return err
+			}
+			fmt.Printf("[OK] Déconnecté de %s\n", target)
+			return nil
+		},
+	}
+
+	// 2. devices
+	devicesCmd := &cobra.Command{
+		Use:   "devices",
+		Short: "List connected ADB devices",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devices, err := engine.ADB.ListDevices(ctx)
+			if err != nil {
+				return err
+			}
+			if len(devices) == 0 {
+				fmt.Println("No connected Fire TV devices found. Run 'waterstick connect <IP>' first.")
+				return nil
+			}
+			fmt.Println("Connected devices:")
+			for _, d := range devices {
+				fmt.Printf("  • %s\n", d)
+			}
+			return nil
+		},
+	}
+
+	// 3. health / diagnostics
+	healthCmd := &cobra.Command{
+		Use:   "health",
+		Short: "Run diagnostics on the connected Fire TV",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+
+			fmt.Printf("Running diagnostics on %s...\n\n", devSerial)
+			info, err := engine.Inspector.Inspect(ctx, devSerial)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("════════════════════════════════════════════════════════════════")
+			fmt.Printf(" Device Model:        %s (%s)\n", info.ModelName, info.Model)
+			fmt.Printf(" Operating System:    %s\n", info.FireOSVersion)
+			fmt.Printf(" Android Base:        API / Release %s\n", info.AndroidVersion)
+			if info.IsFireTV4KMax2Gen {
+				fmt.Println(" Model Compatibility: [OK] Confirmed Fire TV Stick 4K Max 2nd Gen")
+			} else {
+				fmt.Println(" Model Compatibility: [WARN] Generic Fire TV detected")
+			}
+			fmt.Printf(" Storage (/data):     %s free of %s (%s used)\n", info.FreeStorage, info.TotalStorage, info.UsedStoragePct)
+			fmt.Printf(" Total RAM:           %d MB (Free: %d MB | ZRAM Swap: %d MB)\n", info.TotalRAMMB, info.FreeRAMMB, info.ZRAMUsedMB)
+			if info.CPUTempC > 0 {
+				thermalStatusDesc := "Normal"
+				if info.ThermalStatus == 1 {
+					thermalStatusDesc = "Light Throttle"
+				} else if info.ThermalStatus >= 2 {
+					thermalStatusDesc = "Heavy Throttle"
+				}
+				fmt.Printf(" SoC Thermal Sensor:  %.1f °C CPU | %.1f °C GPU (%s)\n", info.CPUTempC, info.GPUTempC, thermalStatusDesc)
+			}
+			if len(info.CPUFreqMHz) > 0 {
+				var freqStrs []string
+				for idx, f := range info.CPUFreqMHz {
+					freqStrs = append(freqStrs, fmt.Sprintf("C%d: %dMHz", idx, f))
+				}
+				fmt.Printf(" CPU Clocks (4 cores):%s\n", strings.Join(freqStrs, " | "))
+			}
+			if info.CPULoad != "" {
+				fmt.Printf(" CPU Load Average:    %s\n", info.CPULoad)
+			}
+			if info.OTABlocked {
+				fmt.Println(" OTA Shield Status:   [ACTIVE] FROZEN / BLOCKED (Safe from forced Amazon OS updates)")
+			} else {
+				fmt.Println(" OTA Shield Status:   [INACTIVE] UNPROTECTED (Amazon background updates active)")
+			}
+			fmt.Printf(" Active Home:         %s\n", info.ActiveLauncher)
+			fmt.Printf(" Disabled Packages:   %d packages currently disabled\n", info.DisabledCount)
+			fmt.Println("════════════════════════════════════════════════════════════════")
+			return nil
+		},
+	}
+
+	// 3b. packages
+	var filterDisabled bool
+	var filterActive bool
+	packagesCmd := &cobra.Command{
+		Use:   "packages",
+		Short: "List managed Fire TV packages and their active/frozen status",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+			pkgs, err := engine.Packages.GetPackagesWithStatus(ctx, devSerial)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Managed packages on %s:\n\n", devSerial)
+			fmt.Printf("  %-38s %-10s %s\n", "PACKAGE ID", "STATUT", "TIER / ROLE")
+			fmt.Println("  ────────────────────────────────────────────────────────────────────────")
+			for _, p := range pkgs {
+				if filterDisabled && !p.Disabled {
+					continue
+				}
+				if filterActive && p.Disabled {
+					continue
+				}
+				status := "[ACTIVE]"
+				if p.Disabled {
+					status = "[FROZEN]"
+				}
+				tier := string(p.Tier)
+				if p.Tier == models.TierVoice {
+					tier = "[ALEXA VOICE - PROTECTED]"
+				}
+				fmt.Printf("  %-38s %-10s %s\n", p.ID, status, tier)
+			}
+			return nil
+		},
+	}
+	packagesCmd.Flags().BoolVar(&filterDisabled, "disabled", false, "Show only disabled/frozen packages")
+	packagesCmd.Flags().BoolVar(&filterActive, "active", false, "Show only active packages")
+
+	// 3c. freeze
+	freezeCmd := &cobra.Command{
+		Use:   "freeze <package-id>",
+		Short: "Freeze (disable) a specific package on the Fire TV (voice-protected)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+			pkgID := args[0]
+			fmt.Printf("Freezing package %s on %s...\n", pkgID, devSerial)
+			if err := engine.Packages.DisablePackage(ctx, devSerial, pkgID, false); err != nil {
+				return err
+			}
+			fmt.Printf("[OK] Package %s is now frozen (disabled)\n", pkgID)
+			return nil
+		},
+	}
+
+	// 3d. unfreeze
+	unfreezeCmd := &cobra.Command{
+		Use:   "unfreeze <package-id>",
+		Short: "Unfreeze (re-enable) a specific package on the Fire TV",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+			pkgID := args[0]
+			fmt.Printf("Unfreezing package %s on %s...\n", pkgID, devSerial)
+			if err := engine.Packages.EnablePackage(ctx, devSerial, pkgID); err != nil {
+				return err
+			}
+			fmt.Printf("[OK] Package %s is now unfrozen (re-enabled)\n", pkgID)
+			return nil
+		},
+	}
+
+	// 4. debloat
+	var profileFlag string
+	var forceVoiceFlag bool
+	debloatCmd := &cobra.Command{
+		Use:   "debloat",
+		Short: "Apply a debloat and performance profile",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+
+			if profileFlag == "" {
+				profileFlag = "balanced"
+			}
+
+			prof, ok := engine.Profiles[profileFlag]
+			if !ok {
+				return fmt.Errorf("unknown profile %q. Available: balanced, streamer", profileFlag)
+			}
+
+			fmt.Printf("Applying Profile: %s\n", prof.Name)
+			fmt.Printf("   Description: %s\n", prof.Description)
+			if prof.PreservesVoice {
+				fmt.Println("   Alexa Voice Remote: PRESERVED & PROTECTED")
+			} else if forceVoiceFlag {
+				fmt.Println("   [WARN] Alexa Voice Remote: DISABLED BY REQUEST")
+			}
+			fmt.Println()
+
+			report, err := engine.ApplyProfile(ctx, devSerial, profileFlag, func(step, total int, msg string) {
+				fmt.Printf("[%d/%d] %s\n", step, total, msg)
+			})
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("\nOptimization complete.")
+			fmt.Printf(" • Safety Snapshot ID: %s\n", report.BackupID)
+			fmt.Printf(" • Packages Disabled:  %d\n", report.DisabledCount)
+			if report.SkippedCount > 0 {
+				fmt.Printf(" • Packages Skipped:   %d (not installed on this device)\n", report.SkippedCount)
+			}
+			fmt.Printf(" • System Settings:    %d applied\n", report.SettingsApplied)
+			if report.RAMFreedMB > 0 {
+				fmt.Printf(" • RAM Reclaimed:      +%d MB (Free RAM: %d MB -> %d MB)\n", report.RAMFreedMB, report.RAMBeforeMB, report.RAMAfterMB)
+			}
+			if len(report.FailedPackages) > 0 {
+				fmt.Println(" • Warnings / Failures:")
+				for _, f := range report.FailedPackages {
+					fmt.Printf("   - %s\n", f)
+				}
+			}
+			fmt.Println("\nTo revert everything at any time, run: waterstick rollback")
+			return nil
+		},
+	}
+	debloatCmd.Flags().StringVarP(&profileFlag, "profile", "p", "balanced", "Profile to apply: 'balanced' (recommended) or 'streamer'")
+	debloatCmd.Flags().BoolVar(&forceVoiceFlag, "force-voice-disable", false, "Explicitly allow disabling Alexa voice packages")
+
+	// 5. rollback
+	rollbackCmd := &cobra.Command{
+		Use:   "rollback",
+		Short: "Revert all changes and restore every package to factory state",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found")
+			}
+
+			fmt.Printf("Rolling back all disabled packages on %s...\n", devSerial)
+			err = engine.Backup.RollbackAll(ctx, devSerial, func(pkg string, cmdErr error) {
+				if cmdErr != nil {
+					fmt.Printf("  [WARN] Failed restoring %s: %v\n", pkg, cmdErr)
+				} else {
+					fmt.Printf("  [OK] Restored %s\n", pkg)
+				}
+			})
+			if err != nil {
+				return err
+			}
+			fmt.Println("\nRollback complete. All packages re-enabled and settings restored to default.")
+			return nil
+		},
+	}
+
+	// 6. sideload apps
+	var installAllFlag bool
+	sideloadCmd := &cobra.Command{
+		Use:   "install [app-id...]",
+		Short: "Sideload open-source TV apps (smarttube, stremio, kodi, nova, vlc, jellyfin)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found")
+			}
+
+			var targets []string
+			if installAllFlag {
+				for _, a := range engine.Sideload.GetApps() {
+					targets = append(targets, a.ID)
+				}
+			} else {
+				if len(args) == 0 {
+					return fmt.Errorf("specify at least one app-id to install, or use --all")
+				}
+				targets = args
+			}
+
+			for _, id := range targets {
+				appID := strings.ToLower(id)
+				fmt.Printf("Installing %s on %s...\n", appID, devSerial)
+				err := engine.Sideload.InstallApp(ctx, devSerial, appID, func(pct int, msg string) {
+					fmt.Printf("  [%d%%] %s\n", pct, msg)
+				})
+				if err != nil {
+					fmt.Printf("Failed to install %s: %v\n", appID, err)
+				} else {
+					fmt.Printf("[OK] Application %s successfully installed.\n", appID)
+				}
+			}
+			return nil
+		},
+	}
+	sideloadCmd.Flags().BoolVarP(&installAllFlag, "all", "a", false, "Install all available apps in catalog")
+
+	// 7. list-apps
+	listAppsCmd := &cobra.Command{
+		Use:   "apps",
+		Short: "List available sideloadable applications in the catalog",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+
+			var apps []models.SideloadApp
+			if devSerial != "" {
+				apps, _ = engine.Sideload.AnnotateInstalled(ctx, devSerial)
+			} else {
+				apps = engine.Sideload.GetApps()
+			}
+
+			fmt.Println("Available Sideload Applications:")
+			for _, a := range apps {
+				status := ""
+				if a.Installed {
+					status = " [INSTALLED]"
+				}
+				fmt.Printf(" • %-12s - %s%s\n", a.ID, a.Name, status)
+				fmt.Printf("   %s\n", a.Description)
+			}
+			return nil
+		},
+	}
+
+	// 8. ota (shield management)
+	otaCmd := &cobra.Command{
+		Use:   "ota",
+		Short: "Manage the OTA Shield (freeze or unfreeze Amazon background OS updates)",
+	}
+
+	otaStatusCmd := &cobra.Command{
+		Use:   "status",
+		Short: "Check whether background Amazon OTA updates are frozen",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+			blocked, err := engine.IsOTABlocked(ctx, devSerial)
+			if err != nil {
+				return err
+			}
+			if blocked {
+				fmt.Println("OTA Shield is ACTIVE: Background Amazon OS updates are completely frozen.")
+				fmt.Println("   Your custom launchers, settings, and sideloaded apps are safe from forced updates.")
+			} else {
+				fmt.Println("OTA Shield is INACTIVE: Background Amazon OS updates are active.")
+				fmt.Println("   Run 'waterstick ota block' to freeze automatic updates safely.")
+			}
+			return nil
+		},
+	}
+
+	otaBlockCmd := &cobra.Command{
+		Use:   "block",
+		Short: "Block background Amazon OTA updates permanently",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+			fmt.Printf("Activating OTA Shield on %s...\n", devSerial)
+			if err := engine.BlockOTA(ctx, devSerial); err != nil {
+				return err
+			}
+			fmt.Println("OTA Shield Activated.")
+			fmt.Println(" • Background updater services restricted (RUN_IN_BACKGROUND: ignore)")
+			fmt.Println(" • OOBE forced update wizard disabled")
+			fmt.Println(" • Bluetooth remote control & Alexa voice remote mic: 100% PRESERVED")
+			return nil
+		},
+	}
+
+	otaUnblockCmd := &cobra.Command{
+		Use:   "unblock",
+		Short: "Unblock background Amazon OTA updates and restore factory defaults",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+			fmt.Printf("Deactivating OTA Shield on %s...\n", devSerial)
+			if err := engine.UnblockOTA(ctx, devSerial); err != nil {
+				return err
+			}
+			fmt.Println("OTA Shield Deactivated. Factory Amazon update services restored.")
+			return nil
+		},
+	}
+
+	otaCmd.AddCommand(otaStatusCmd, otaBlockCmd, otaUnblockCmd)
+
+	// 9. purge / clean-ram
+	purgeCmd := &cobra.Command{
+		Use:     "purge",
+		Aliases: []string{"clean-ram", "ram-clean"},
+		Short:   "Reclaim RAM and flush orphaned video buffer caches in 1-click",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+			fmt.Printf("Purging memory and video buffer caches on %s...\n", devSerial)
+			before, after, freed, err := engine.PurgeMemory(ctx, devSerial)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("[OK] Mémoire et tampons vidéo purgés avec succès.\n")
+			fmt.Printf(" - RAM libre avant : %d Mo\n", before)
+			fmt.Printf(" - RAM libre après : %d Mo\n", after)
+			if freed > 0 {
+				fmt.Printf(" - RAM récupérée   : +%d Mo\n", freed)
+			} else {
+				fmt.Println(" - RAM récupérée   : Mémoire déjà optimisée.")
+			}
+			return nil
+		},
+	}
+
+	// 9. tweak
+	tweakCmd := &cobra.Command{
+		Use:   "tweak",
+		Short: "Manage advanced hardware & system tweaks (Audio, Display, Power, DNS)",
+	}
+
+	tweakStatusCmd := &cobra.Command{
+		Use:   "status",
+		Short: "Show current configuration of all advanced tweaks",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+
+			audio, _ := engine.GetAudioTweakConfig(ctx, devSerial)
+			disp, _ := engine.GetDisplayTweakConfig(ctx, devSerial)
+			pwr, _ := engine.GetPowerTweakConfig(ctx, devSerial)
+			dns, _ := engine.GetDNSTweakConfig(ctx, devSerial)
+
+			fmt.Println()
+			fmt.Printf("=== RÉGLAGES AVANCÉS & MATÉRIEL [%s] ===\n\n", devSerial)
+
+			fmt.Println("[AUDIO & PASSTHROUGH]")
+			optStatus := "Auto / Par défaut"
+			if audio.IsOptical51Optimized {
+				optStatus = "ACTIVÉ (Dolby Digital 5.1 AC-3 pour Ampli Optique/TOSLink)"
+			}
+			fmt.Printf("  Mode Ampli Optique 5.1  : %s\n", optStatus)
+			navStatus := "Activés"
+			if !audio.NavigationSounds {
+				navStatus = "Désactivés (Silencieux)"
+			}
+			fmt.Printf("  Sons de navigation      : %s\n", navStatus)
+			fmt.Printf("  Format audio brut       : Device=%s, Surround=%s, Formats=%s\n",
+				audio.CompressedAudioPref, audio.EncodedSurroundOutput, audio.SurroundEnabledFormats)
+			fmt.Println()
+
+			fmt.Println("[AFFICHAGE & GAMING]")
+			matchStatus := "Désactivé (60Hz fixe)"
+			if disp.MatchFrameRate {
+				matchStatus = "ACTIVÉ (Match 24p Cinéma natif sans saccades)"
+			}
+			fmt.Printf("  Match Original Frame Rate : %s\n", matchStatus)
+			fmt.Printf("  Résolution TV             : %s\n", disp.Resolution)
+			fmt.Printf("  Plage Dynamique HDR       : %s\n", disp.HDRSetting)
+			fmt.Printf("  Profondeur de couleur     : %s-bit\n", disp.DeepColor)
+			fmt.Printf("  Mode Faible Latence (ALLM): %s\n", disp.LowLatencyMode)
+			fmt.Printf("  Super Résolution IA       : %s\n", disp.SuperResolution)
+			fmt.Println()
+
+			fmt.Println("[ALIMENTATION & VEILLE]")
+			ambStatus := "Actif"
+			if !pwr.AmbientExperienceEnabled {
+				ambStatus = "DÉSACTIVÉ (Écrans sponsorisés coupés)"
+			}
+			fmt.Printf("  Ambient Experience (Pubs): %s\n", ambStatus)
+			fmt.Printf("  Délai d'inactivité veille: %d minutes\n", pwr.SleepTimeoutMinutes)
+			fmt.Println()
+
+			fmt.Println("[RÉSEAU & VIE PRIVÉE (DoT DNS)]")
+			fmt.Printf("  Fournisseur DoT : %s\n", dns.ProviderName)
+			fmt.Printf("  Mode / Serveur  : Mode=%s, Hôte=%s\n", dns.Mode, dns.Specifier)
+			fmt.Println()
+
+			return nil
+		},
+	}
+
+	var opt51Flag, autoAudioFlag bool
+	var navSoundsFlag string
+	tweakAudioCmd := &cobra.Command{
+		Use:   "audio",
+		Short: "Configure audio output & 5.1 optical passthrough",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+
+			if opt51Flag {
+				if err := engine.SetOptical51Mode(ctx, devSerial, true); err != nil {
+					return err
+				}
+				fmt.Println("[OK] Mode Ampli 5.1 Optique ACTIVÉ (Sortie AC-3 Bitstream Dolby Digital forcée).")
+			} else if autoAudioFlag {
+				if err := engine.SetOptical51Mode(ctx, devSerial, false); err != nil {
+					return err
+				}
+				fmt.Println("[OK] Mode Audio restauré en Automatique (Négociation HDMI par défaut).")
+			}
+
+			if navSoundsFlag != "" {
+				enable := navSoundsFlag == "on" || navSoundsFlag == "1" || navSoundsFlag == "true"
+				if err := engine.SetNavigationSounds(ctx, devSerial, enable); err != nil {
+					return err
+				}
+				if enable {
+					fmt.Println("[OK] Sons de navigation réactivés.")
+				} else {
+					fmt.Println("[OK] Sons de navigation désactivés (mode silencieux).")
+				}
+			}
+
+			return nil
+		},
+	}
+	tweakAudioCmd.Flags().BoolVar(&opt51Flag, "optical-51", false, "Force standard Dolby Digital 5.1 AC-3 for Optical/TOSLink audio amplifiers")
+	tweakAudioCmd.Flags().BoolVar(&autoAudioFlag, "auto", false, "Reset audio format to default automatic HDMI negotiation")
+	tweakAudioCmd.Flags().StringVar(&navSoundsFlag, "nav-sounds", "", "Toggle remote navigation click sounds (on/off)")
+
+	var matchFrameRateFlag string
+	tweakDisplayCmd := &cobra.Command{
+		Use:   "display",
+		Short: "Configure display and 24p cinema match frame rate",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+
+			if matchFrameRateFlag != "" {
+				enable := matchFrameRateFlag == "on" || matchFrameRateFlag == "1" || matchFrameRateFlag == "true"
+				if err := engine.SetMatchFrameRate(ctx, devSerial, enable); err != nil {
+					return err
+				}
+				if enable {
+					fmt.Println("[OK] Match Original Frame Rate ACTIVÉ (lecture fluide 24p cinéma native).")
+				} else {
+					fmt.Println("[OK] Match Original Frame Rate désactivé (60Hz fixe).")
+				}
+			} else {
+				fmt.Println("Usage: waterstick tweak display --match-framerate [on|off]")
+			}
+			return nil
+		},
+	}
+	tweakDisplayCmd.Flags().StringVar(&matchFrameRateFlag, "match-framerate", "", "Enable or disable native 24p match frame rate (on/off)")
+
+	var ambientFlag string
+	var sleepMinFlag int
+	tweakPowerCmd := &cobra.Command{
+		Use:   "power",
+		Short: "Configure ambient ads experience and sleep timeouts",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+
+			if ambientFlag != "" {
+				enable := ambientFlag == "on" || ambientFlag == "1" || ambientFlag == "true"
+				if err := engine.SetAmbientExperience(ctx, devSerial, enable); err != nil {
+					return err
+				}
+				if enable {
+					fmt.Println("[OK] Ambient Experience réactivé.")
+				} else {
+					fmt.Println("[OK] Ambient Experience DÉSACTIVÉ (veille publicitaire coupée).")
+				}
+			}
+
+			if sleepMinFlag > 0 {
+				if err := engine.SetSleepTimeout(ctx, devSerial, sleepMinFlag); err != nil {
+					return err
+				}
+				fmt.Printf("[OK] Délai d'inactivité avant veille configuré à %d minutes.\n", sleepMinFlag)
+			}
+			return nil
+		},
+	}
+	tweakPowerCmd.Flags().StringVar(&ambientFlag, "ambient", "", "Toggle Ambient Experience ads (on/off)")
+	tweakPowerCmd.Flags().IntVar(&sleepMinFlag, "sleep", 0, "Set sleep timeout in minutes (e.g. 15, 20, 30)")
+
+	tweakDNSCmd := &cobra.Command{
+		Use:   "dns [adguard|quad9|cloudflare|family|off]",
+		Short: "Configure encrypted DNS-over-TLS (DoT) ad-blocking resolver",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			engine, err := waterstick.NewEngine(adbPath)
+			if err != nil {
+				return err
+			}
+			ctx := context.Background()
+			devSerial := resolveDevice(engine, targetDevice)
+			if devSerial == "" {
+				return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+			}
+
+			provider := args[0]
+			if err := engine.SetDNSProvider(ctx, devSerial, provider); err != nil {
+				return err
+			}
+			cfg, _ := engine.GetDNSTweakConfig(ctx, devSerial)
+			fmt.Printf("[OK] Résolveur DNS DoT configuré : %s (%s)\n", cfg.ProviderName, cfg.Specifier)
+			return nil
+		},
+	}
+
+	tweakCmd.AddCommand(tweakStatusCmd, tweakAudioCmd, tweakDisplayCmd, tweakPowerCmd, tweakDNSCmd)
+
+	// 10. tui
+	tuiCmd := &cobra.Command{
+		Use:   "tui",
+		Short: "Launch the interactive Terminal User Interface (Bubble Tea v2)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Execute waterstick-tui
+			execCmd := exec.Command("waterstick-tui")
+			execCmd.Stdin = os.Stdin
+			execCmd.Stdout = os.Stdout
+			execCmd.Stderr = os.Stderr
+			return execCmd.Run()
+		},
+	}
+
+	// 9. gui
+	guiCmd := &cobra.Command{
+		Use:   "gui",
+		Short: "Launch the Desktop Graphical User Interface (Wails v2)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Execute waterstick-gui
+			execCmd := exec.Command("waterstick-gui")
+			execCmd.Stdin = os.Stdin
+			execCmd.Stdout = os.Stdout
+			execCmd.Stderr = os.Stderr
+			return execCmd.Run()
+		},
+	}
+
+	// 14. about
+	aboutCmd := &cobra.Command{
+		Use:   "about",
+		Short: "Display information about WaterStick and author",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("WaterStick v" + version)
+			fmt.Println("Fire TV Stick 4K Max 2nd Gen Debloat & Optimization Suite")
+			fmt.Println("Author: MedCy1 (https://github.com/MedCy1)")
+			fmt.Println("Repository: https://github.com/MedCy1/WaterStick")
+			fmt.Println("License: PolyForm Noncommercial 1.0.0")
+		},
+	}
+
+	rootCmd.AddCommand(connectCmd, disconnectCmd, devicesCmd, healthCmd, packagesCmd, freezeCmd, unfreezeCmd, debloatCmd, rollbackCmd, sideloadCmd, listAppsCmd, otaCmd, purgeCmd, tweakCmd, tuiCmd, guiCmd, aboutCmd)
+
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
+}
+
+func resolveDevice(engine *waterstick.Engine, explicitDevice string) string {
+	if explicitDevice != "" {
+		return explicitDevice
+	}
+	devices, err := engine.ADB.ListDevices(context.Background())
+	if err == nil && len(devices) > 0 {
+		return devices[0]
+	}
+	return ""
+}
