@@ -1211,9 +1211,9 @@ func (m model) View() tea.View {
 	}
 
 	helpStyled := lipgloss.NewStyle().Foreground(cTextMuted).Render(helpText)
-	creditsStyled := lipgloss.NewStyle().Foreground(cBorderDim).Render("WaterStick v" + version + " • github.com/MedCy1")
+	creditsStyled := lipgloss.NewStyle().Foreground(cBorderDim).Render("WaterStick " + updater.FormatVersion(version) + " • github.com/MedCy1")
 	if m.updateAvailable != "" {
-		creditsStyled = lipgloss.NewStyle().Foreground(cAmber).Render(fmt.Sprintf("[Mise à jour %s disponible : tapez 'waterstick update'] ", m.updateAvailable)) + lipgloss.NewStyle().Foreground(cBorderDim).Render("WaterStick v" + version + " • github.com/MedCy1")
+		creditsStyled = lipgloss.NewStyle().Foreground(cAmber).Render(fmt.Sprintf("[Mise à jour %s disponible : tapez 'waterstick update'] ", m.updateAvailable)) + lipgloss.NewStyle().Foreground(cBorderDim).Render("WaterStick " + updater.FormatVersion(version) + " • github.com/MedCy1")
 	}
 	footerGap := contentWidth - lipgloss.Width(helpStyled) - lipgloss.Width(creditsStyled)
 	if footerGap > 2 {

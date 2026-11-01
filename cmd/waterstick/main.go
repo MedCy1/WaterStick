@@ -22,7 +22,7 @@ var (
 func main() {
 	rootCmd := &cobra.Command{
 		Use:     "waterstick",
-		Version: version,
+		Version: updater.FormatVersion(version),
 		Short:   "WaterStick - Fire TV Stick 4K Max 2nd Gen Debloat & Optimization Suite",
 		Long: `WaterStick is a safe, non-destructive, and reversible optimization suite
 tailored for Amazon Fire TV Stick 4K Max 2nd Gen (Fire OS 8 / Android 11).
@@ -821,7 +821,7 @@ the Alexa voice remote control.`,
 		Use:   "about",
 		Short: "Display information about WaterStick and author",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("WaterStick v" + version)
+			fmt.Println("WaterStick " + updater.FormatVersion(version))
 			fmt.Println("Fire TV Stick 4K Max 2nd Gen Debloat & Optimization Suite")
 			fmt.Println("Author: MedCy1 (https://github.com/MedCy1)")
 			fmt.Println("Repository: https://github.com/MedCy1/WaterStick")
@@ -845,11 +845,11 @@ the Alexa voice remote control.`,
 			}
 
 			if !isNewer {
-				fmt.Printf("WaterStick is already up to date (current: %s, latest: %s).\n", version, rel.TagName)
+				fmt.Printf("WaterStick is already up to date (current: %s, latest: %s).\n", updater.FormatVersion(version), rel.TagName)
 				return nil
 			}
 
-			fmt.Printf("A new version of WaterStick is available: %s -> %s\n", version, rel.TagName)
+			fmt.Printf("A new version of WaterStick is available: %s -> %s\n", updater.FormatVersion(version), rel.TagName)
 			if rel.Body != "" {
 				fmt.Println("\nRelease Notes:")
 				lines := strings.Split(rel.Body, "\n")

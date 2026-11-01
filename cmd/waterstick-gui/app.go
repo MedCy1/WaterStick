@@ -340,7 +340,7 @@ func (a *App) CheckUpdate() (*UpdateCheckResult, error) {
 	}
 	return &UpdateCheckResult{
 		Available:      isNewer,
-		CurrentVersion: version,
+		CurrentVersion: updater.FormatVersion(version),
 		LatestVersion:  rel.TagName,
 		ReleaseNotes:   rel.Body,
 	}, nil

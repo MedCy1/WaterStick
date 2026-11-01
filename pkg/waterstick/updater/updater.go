@@ -92,6 +92,19 @@ func (u *UpdateChecker) CheckLatest(ctx context.Context, currentVersion string) 
 	return &rel, isNewer, nil
 }
 
+// FormatVersion ensures that a version number starts with "v" (e.g. "1.0.0" -> "v1.0.0").
+// If the version string already begins with "v", or if it is "dev" or empty, it is returned as is.
+func FormatVersion(v string) string {
+	trimmed := strings.TrimSpace(v)
+	if trimmed == "" || trimmed == "dev" {
+		return trimmed
+	}
+	if strings.HasPrefix(trimmed, "v") {
+		return trimmed
+	}
+	return "v" + trimmed
+}
+
 // CompareVersions compares two semver strings (e.g. "v1.0.1" and "v1.0.0").
 // Returns 1 if v1 > v2, -1 if v1 < v2, and 0 if equal.
 func CompareVersions(v1, v2 string) int {

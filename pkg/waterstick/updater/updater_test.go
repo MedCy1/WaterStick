@@ -11,6 +11,27 @@ import (
 	"testing"
 )
 
+func TestFormatVersion(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"1.0.0", "v1.0.0"},
+		{"v1.0.0", "v1.0.0"},
+		{" 1.2.3 ", "v1.2.3"},
+		{" v1.2.3 ", "v1.2.3"},
+		{"dev", "dev"},
+		{"", ""},
+	}
+
+	for _, tt := range tests {
+		got := FormatVersion(tt.input)
+		if got != tt.expected {
+			t.Errorf("FormatVersion(%q) = %q, expected %q", tt.input, got, tt.expected)
+		}
+	}
+}
+
 func TestCompareVersions(t *testing.T) {
 	tests := []struct {
 		v1       string
