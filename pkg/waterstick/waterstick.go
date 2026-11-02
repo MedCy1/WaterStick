@@ -301,6 +301,21 @@ func (e *Engine) GetLauncherStatus(ctx context.Context, deviceSerial string) (*l
 	return e.Launcher.GetStatus(ctx, deviceSerial)
 }
 
+// HomeStatus reports which launcher owns the Home button.
+func (e *Engine) HomeStatus(ctx context.Context, deviceSerial string) (*launcher.HomeStatus, error) {
+	return e.Launcher.HomeStatus(ctx, deviceSerial)
+}
+
+// ReplaceWithWaterOS makes WaterOS the only home and disables the stock launcher (reversible).
+func (e *Engine) ReplaceWithWaterOS(ctx context.Context, deviceSerial string) (*launcher.HomeStatus, error) {
+	return e.Launcher.ReplaceWithWaterOS(ctx, deviceSerial)
+}
+
+// RestoreStockHome gives the Home button back to the Amazon launcher.
+func (e *Engine) RestoreStockHome(ctx context.Context, deviceSerial string) (*launcher.HomeStatus, error) {
+	return e.Launcher.RestoreStockHome(ctx, deviceSerial)
+}
+
 // RestartLauncher restarts com.amazon.tv.launcher to flush memory and reset UI state.
 func (e *Engine) RestartLauncher(ctx context.Context, deviceSerial string) error {
 	return e.Launcher.Restart(ctx, deviceSerial)

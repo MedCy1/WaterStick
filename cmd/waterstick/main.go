@@ -1002,7 +1002,45 @@ freezes commercial recommendation rows, and flushes launcher cache.`,
 		},
 	}
 
-	launcherCmd.AddCommand(launcherCleanCmd, launcherStatusCmd, launcherRestoreCmd, launcherRestartCmd)
+	homeCmd := func(use, short string, run func(*waterstick.Engine, context.Context, string) (*launcher.HomeStatus, error)) *cobra.Command {
+		return &cobra.Command{
+			Use:   use,
+			Short: short,
+			RunE: func(cmd *cobra.Command, args []string) error {
+				engine, err := waterstick.NewEngine(adbPath)
+				if err != nil {
+					return err
+				}
+				ctx := context.Background()
+				devSerial := resolveDevice(engine, targetDevice)
+				if devSerial == "" {
+					return fmt.Errorf("no target device found. Connect first with 'waterstick connect <IP>'")
+				}
+				st, err := run(engine, ctx, devSerial)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("Home activity:        %s\n", st.HomeActivity)
+				fmt.Printf("WaterOS installed:    %v\n", st.WaterOSInstalled)
+				fmt.Printf("Stock launcher off:   %v\n", st.StockDisabled)
+				fmt.Printf("Home starter off:     %v\n", st.StarterDisabled)
+				if st.WaterOSIsHome {
+					fmt.Println("[OK] WaterOS is the home screen; the Amazon launcher uses no RAM.")
+				} else {
+					fmt.Println("[OK] The Amazon launcher is the home screen.")
+				}
+				return nil
+			},
+		}
+	}
+	launcherReplaceCmd := homeCmd("replace", "Make WaterOS the only home screen and disable the Amazon launcher (reversible with 'launcher stock')",
+		func(e *waterstick.Engine, ctx context.Context, s string) (*launcher.HomeStatus, error) { return e.ReplaceWithWaterOS(ctx, s) })
+	launcherStockCmd := homeCmd("stock", "Re-enable the Amazon launcher and give it the Home button back",
+		func(e *waterstick.Engine, ctx context.Context, s string) (*launcher.HomeStatus, error) { return e.RestoreStockHome(ctx, s) })
+	launcherHomeCmd := homeCmd("home-status", "Show which launcher owns the Home button",
+		func(e *waterstick.Engine, ctx context.Context, s string) (*launcher.HomeStatus, error) { return e.HomeStatus(ctx, s) })
+
+	launcherCmd.AddCommand(launcherCleanCmd, launcherStatusCmd, launcherRestoreCmd, launcherRestartCmd, launcherReplaceCmd, launcherStockCmd, launcherHomeCmd)
 
 	// 10. tui
 	tuiCmd := &cobra.Command{

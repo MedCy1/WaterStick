@@ -388,6 +388,33 @@ func (a *App) GetLauncherStatus() (*launcher.Status, error) {
 	return a.engine.GetLauncherStatus(a.ctx, target)
 }
 
+// ReplaceWithWaterOS makes WaterOS the only home screen (reversible).
+func (a *App) ReplaceWithWaterOS() (*launcher.HomeStatus, error) {
+	target := a.GetConnectedDevice()
+	if target == "" {
+		return nil, fmt.Errorf("aucun périphérique connecté")
+	}
+	return a.engine.ReplaceWithWaterOS(a.ctx, target)
+}
+
+// RestoreStockHome gives the Home button back to the Amazon launcher.
+func (a *App) RestoreStockHome() (*launcher.HomeStatus, error) {
+	target := a.GetConnectedDevice()
+	if target == "" {
+		return nil, fmt.Errorf("aucun périphérique connecté")
+	}
+	return a.engine.RestoreStockHome(a.ctx, target)
+}
+
+// HomeStatus reports which launcher owns the Home button.
+func (a *App) HomeStatus() (*launcher.HomeStatus, error) {
+	target := a.GetConnectedDevice()
+	if target == "" {
+		return nil, fmt.Errorf("aucun périphérique connecté")
+	}
+	return a.engine.HomeStatus(a.ctx, target)
+}
+
 // RestartLauncher force-stops com.amazon.tv.launcher to flush RAM and UI state.
 func (a *App) RestartLauncher() (string, error) {
 	target := a.GetConnectedDevice()

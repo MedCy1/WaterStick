@@ -244,7 +244,7 @@ Disabling these packages breaks remote voice search. WaterStick keeps all voice 
 
 ## 8. Physical device verification metrics
 
-Measurements taken on a physical Fire TV Stick 4K Max 2nd Gen (Fire OS 8.1.8.5, `192.168.1.50:5555`):
+Measurements taken on a physical Fire TV Stick 4K Max 2nd Gen (Fire OS 8.1.8.5, karat):
 
 | Metric | Stock baseline | Balanced profile | Streamer profile |
 | :--- | :--- | :--- | :--- |
@@ -259,3 +259,23 @@ Measurements taken on a physical Fire TV Stick 4K Max 2nd Gen (Fire OS 8.1.8.5, 
 ## 9. Conclusion
 
 Fire OS 8 uses background synchronization and persistent service managers that respawn terminated processes. Managing the device cleanly requires toggling the specific configuration properties identified through decompilation (`featured_item_video_enabled`, `pvde_playback_api_enabled_for_launcher`, `FTV_LAUNCHER_FR_AUTOPLAY_717667`, and `limit_ad_tracking`) and using user-space package disabling instead of destructive uninstalls.
+
+## Replacing the home screen (`com.amazon.firehomestarter`)
+
+Decompiled from `research/apks/com.amazon.firehomestarter.apk`; verified on `karat` (Fire OS 8, API 30).
+
+* `HomeStarterActivity` declares the `HOME` filter at priority 1. When several HOME candidates have different priorities, the package manager returns the highest one before looking at the preferred home. It also clamps every non-system app's filter priority to 0. A sideloaded launcher therefore never receives the Home button while firehomestarter is enabled, even when it holds `android.app.role.HOME`.
+* `HomeActivityResolver` drops every `fireos.intent.category.MAIN_HOME` activity with priority `<= 0` (log: `Skipping package ... because it does not have priority > 0`). `EnableComponentStartStrategy` then re-enables `com.amazon.tv.launcher/.ui.HomeActivity_vNext`.
+* If no strategy succeeds, `HomeStrategyExecutor` shows a progress spinner and retries every 5 seconds without end. This is the "black screen" reported when `com.amazon.tv.launcher` is disabled on its own.
+* The working, reversible sequence (`waterstick launcher replace`):
+  1. `pm disable-user --user 0 com.amazon.firehomestarter`
+  2. `pm disable-user --user 0 com.amazon.tv.launcher`
+  3. `cmd package set-home-activity com.medcy1.wateros.launcher/.MainActivity`
+
+  The set-home step must come last: the preferred home is recorded against the current candidate set. After it, the only HOME candidates are WaterOS (0) and Settings' `FallbackHome` (-1000). Home and boot land on WaterOS, and the stock launcher has no process. RAM measured: about 123 MB PSS freed, `MemAvailable` went from 464 MB to 577 MB after reboot.
+* What the stock launcher owned:
+  * The main Settings grid (`amazon.intent.action.MAINSETTINGS`, `MainSettingsActivity`). Every sub-screen lives in `com.amazon.tv.settings.v2` and keeps working through its own actions, for example `android.settings.WIFI_SETTINGS` and `com.amazon.device.settings.action.DEVICE`.
+  * Alexa's visual search results (`SHOW_SEARCH_RESULTS`, `SHOW_DIRECTIVE_SEARCH_RESULTS`).
+  * Inputs and the Prime content rows.
+* The Home long-press quick menu (`com.amazon.tv.quicksettings`) keeps working. WaterOS handles `MAINSETTINGS` itself, so that menu's Settings button keeps working too.
+* Rollback (`waterstick launcher stock`): `pm enable` both packages, then `cmd package set-home-activity com.amazon.tv.launcher/.ui.HomeActivity_vNext`.

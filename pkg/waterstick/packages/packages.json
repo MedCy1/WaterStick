@@ -27,7 +27,7 @@
     {
       "id": "com.amazon.tv.launcher",
       "name": "Fire TV Stock Launcher",
-      "description": "Default home screen interface. Disabling on Fire OS 8 causes immediate black screen and bootloop.",
+      "description": "Default home screen interface. Never disable it alone: firehomestarter then spins forever. Use 'waterstick launcher replace', which disables it together with firehomestarter and pins WaterOS as home.",
       "tier": "tier_0_hardlocked",
       "category": "system",
       "risk": "critical",
@@ -369,7 +369,7 @@
     {
       "id": "com.amazon.firehomestarter",
       "name": "Fire Home Starter Watchdog",
-      "description": "Amazon watchdog process that monitors and forces the default stock launcher to re-enable itself.",
+      "description": "Boot-time HOME trampoline (priority 1): re-enables the stock launcher's HomeActivity_vNext and ignores any sideloaded home. Disabling it is harmless while the stock launcher stays enabled.",
       "tier": "tier_safe",
       "category": "bloat",
       "risk": "none",

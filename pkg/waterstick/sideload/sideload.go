@@ -156,6 +156,14 @@ func (c *Catalog) InstallApp(ctx context.Context, deviceSerial, appID string, pr
 		return fmt.Errorf("failed installing %s: %w", app.Name, err)
 	}
 
+	// Sideloaded apps run interpreted/JIT until Fire OS's idle dexopt applies their baseline
+	// profile, which can take days. Compiling it now is what makes Compose UIs smooth from the
+	// first launch (WaterOS measured: 32% missed frames before, 0% after). Best effort.
+	if progressFn != nil {
+		progressFn(92, fmt.Sprintf("Optimizing %s for this device...", app.Name))
+	}
+	_, _ = c.client.Shell(ctx, deviceSerial, "cmd package compile -m speed-profile -f "+app.PackageName)
+
 	if progressFn != nil {
 		progressFn(100, fmt.Sprintf("Successfully installed %s!", app.Name))
 	}
